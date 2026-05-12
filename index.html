@@ -150,10 +150,10 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 #page-diseno .prod-row:last-child { border-bottom:none; }
 #page-diseno .prod-nombre { flex:1; font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 #page-diseno .prod-drag { color:var(--muted); cursor:default; font-size:14px; flex-shrink:0; user-select:none; }
-#page-diseno .ficha-btn { width:24px; height:24px; border-radius:6px; background:var(--arena-l); border:1px solid var(--arena); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--muted); font-size:13px; padding:0; line-height:1; cursor:default; }
+#page-diseno .ficha-btn { width:24px; height:24px; border-radius:6px; background:var(--arena-l); border:1px solid var(--arena); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--muted); font-size:13px; padding:0; line-height:1; cursor:pointer; }
 #page-diseno .nota-ico { font-size:12px; flex-shrink:0; width:18px; text-align:center; }
 #page-diseno .estado-wrap { position:relative; flex-shrink:0; width:140px; }
-#page-diseno .estado-btn { font-size:10px; font-weight:500; padding:4px 10px; border-radius:20px; border:none; white-space:nowrap; font-family:'Montserrat',sans-serif; min-width:100px; text-align:center; cursor:default; }
+#page-diseno .estado-btn { font-size:10px; font-weight:500; padding:4px 10px; border-radius:20px; border:none; white-space:nowrap; font-family:'Montserrat',sans-serif; min-width:100px; text-align:center; cursor:pointer; }
 #page-diseno .nped-tag { min-width:28px; height:20px; border-radius:5px; background:var(--arena-l); border:1px solid var(--arena); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:10px; color:var(--muted); font-weight:500; padding:0 5px; font-family:'Montserrat',sans-serif; white-space:nowrap; letter-spacing:0.5px; }
 #page-diseno .nped-tag.filled { background:#d4c8bf; color:var(--marron-d); border-color:#c4b8af; font-weight:600; }
 #page-diseno .c-footer { display:flex; align-items:center; gap:10px; padding:10px 18px; border-top:1px solid var(--border); flex-wrap:wrap; position:relative; }
@@ -178,6 +178,15 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   #page-diseno .estado-wrap { order:11; flex:1; min-width:0; margin-top:5px; width:auto; }
   #page-diseno .estado-btn { width:100%; font-size:10px; text-align:center; min-width:unset; padding:3px 8px; }
 }
+
+#page-diseno .estado-pop { display:none; position:absolute; right:0; top:calc(100% + 4px); background:var(--white); border:1px solid var(--border); border-radius:10px; z-index:500; width:210px; box-shadow:0 6px 24px rgba(58,46,42,0.15); }
+#page-diseno .estado-pop.open { display:block; }
+#page-diseno .estado-pop-inp { width:100%; padding:9px 12px; border:none; border-bottom:1px solid var(--border); font-size:12px; font-family:'Montserrat',sans-serif; outline:none; background:var(--bg); border-radius:10px 10px 0 0; }
+#page-diseno .estado-opts { max-height:200px; overflow-y:auto; }
+#page-diseno .estado-opt { padding:9px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:8px; color:var(--text); }
+#page-diseno .estado-opt:hover { background:var(--arena-l); }
+#page-diseno .estado-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+#page-diseno .estado-empty-btn { font-size:10px; color:var(--muted); padding:4px 10px; border-radius:20px; border:1px dashed var(--border); background:none; cursor:pointer; white-space:nowrap; font-family:'Montserrat',sans-serif; }
 </style>
 </head>
 <body>
@@ -527,16 +536,19 @@ function actualizarFotosHint() {
 function autoSync() {
   let changed = false;
   PEDIDOS_ANGIE_SIMULADOS.forEach(pedido => {
-    const c = clientes.find(x =>
-      x.bebe && x.bebe.toLowerCase() === (pedido.bebe||'').toLowerCase() &&
-      x.mama && x.mama.toLowerCase() === (pedido.mama||'').toLowerCase()
-    );
+    const _nb = s => (s||'').toLowerCase().trim();
+    const c = clientes.find(x => {
+      const pb = _nb(pedido.bebe), xb = _nb(x.bebe);
+      const bebeOk = pb === xb || xb.startsWith(pb + ' ') || pb.startsWith(xb + ' ');
+      return x.bebe && bebeOk && x.mama && _nb(x.mama) === _nb(pedido.mama);
+    });
     if (!c) return;
     if (!c.tieneProductos) { c.tieneProductos = true; changed = true; }
     if (pedido.prods && pedido.prods.length > 0) {
       const todosEnProd = pedido.prods.every(p => p.estado === 'En producción');
       if (todosEnProd && c.estado === 'edicion_renu') { c.estado = 'para_subir'; changed = true; }
-      const hayListo = pedido.prods.some(p => p.estado === 'Listo en estudio');
+      const hayListo = pedido.prods.filter(p => p.estado !== 'Entregado').length > 0 &&
+                         pedido.prods.filter(p => p.estado !== 'Entregado').every(p => p.estado === 'Listo en estudio');
       if (hayListo && !c.tareaVideoDisparada) {
         c.tareaVideoPendiente = true; c.tareaVideoDisparada = true; changed = true;
       }
@@ -608,7 +620,8 @@ function renderApp() {
   const preEdicion = sortPorFechaSesion(clientes.filter(c => ['galeria_pendiente','pendiente_cliente'].includes(c.estado)));
   const enEdicion = getEdicionOrdenada();
   const paraSubir = sortPorFechaSesion(clientes.filter(c => c.estado === 'para_subir'));
-  const terminados = clientes.filter(c => c.estado === 'subidas');
+  const videoPendiente = clientes.filter(c => c.estado === 'subidas' && c.tareaVideoPendiente && !c.tareaVideoHecha);
+  const terminados = clientes.filter(c => c.estado === 'subidas' && !(c.tareaVideoPendiente && !c.tareaVideoHecha));
 
   let html = '';
 
@@ -645,6 +658,14 @@ function renderApp() {
       <span class="count-badge">${paraSubir.length}</span>
     </div>`;
     paraSubir.forEach(c => { html += renderCard(c, clientes.indexOf(c)); });
+  }
+
+  if (videoPendiente.length > 0) {
+    html += `<div class="seccion-header" style="margin-top:8px;">
+      <div class="seccion-titulo">🎬 Video pendiente</div>
+      <span class="count-badge">${videoPendiente.length}</span>
+    </div>`;
+    videoPendiente.forEach(c => { html += renderCard(c, clientes.indexOf(c), true); });
   }
 
   if (terminados.length > 0) {
@@ -1103,7 +1124,7 @@ function disenoSyncHtml() {
 function disenoCardHtml(p, idx) {
   const pagoClass = p.pago === 'Pagado' ? 'pago-pagado' : p.pago === 'Saldo pendiente' ? 'pago-saldo' : 'pago-vacio';
   const pagoLabel = p.pago || 'Estado pago';
-  const prodsActivos = (p.prods || []).filter(x => x.estado !== 'Entregado');
+  const prodsActivos = (p.prods || []).map((x,i) => ({...x, _oi:i})).filter(x => x.estado !== 'Entregado');
 
   const fichaIcon = `<svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><line x1="3.5" y1="4.5" x2="10.5" y2="4.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>`;
 
@@ -1113,12 +1134,22 @@ function disenoCardHtml(p, idx) {
     const ntagHtml = x.numPedido
       ? `<span class="nped-tag filled">#${x.numPedido}</span>`
       : `<span class="nped-tag">···</span>`;
+    const _btnStyle = estadoStyleD(x.estado);
+    const _epopId = `epop-${idx}-${x._oi}`;
     const estadoHtml = x.estado
-      ? `<button class="estado-btn" style="${estadoStyleD(x.estado)}">${x.estado}</button>`
-      : `<button class="estado-btn" style="background:#f0efed;color:#5c5248;">—</button>`;
+      ? `<button class="estado-btn" style="${_btnStyle}" onclick="event.stopPropagation();toggleEstadoD(${idx},${x._oi})">${x.estado}</button>
+         <div class="estado-pop" id="${_epopId}">
+           <input class="estado-pop-inp" placeholder="Buscar estado..." oninput="fillEstadoOptsD(${idx},${x._oi},this.value)">
+           <div class="estado-opts"></div>
+         </div>`
+      : `<button class="estado-empty-btn" onclick="event.stopPropagation();toggleEstadoD(${idx},${x._oi})">+ estado</button>
+         <div class="estado-pop" id="${_epopId}">
+           <input class="estado-pop-inp" placeholder="Buscar estado..." oninput="fillEstadoOptsD(${idx},${x._oi},this.value)">
+           <div class="estado-opts"></div>
+         </div>`;
     return `<div class="prod-row">
       <span class="prod-drag">⠿</span>
-      <button class="ficha-btn" title="Ficha del producto">${fichaIcon}</button>
+      <button class="ficha-btn" onclick="abrirFichaDiseno(${idx})" title="Ver ficha">${fichaIcon}</button>
       <div class="prod-nombre">${x.nombre||''}</div>
       ${cantBadge}
       <div class="nota-ico">${x.nota?'📝':''}</div>
@@ -1142,6 +1173,88 @@ function disenoCardHtml(p, idx) {
       <span id="dsync-${idx}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${disenoSyncHtml()}</span>
     </div>
   </div>`;
+}
+
+
+let _activeEPopD = null;
+
+function toggleEstadoD(pidx, eidx) {
+  const id = `epop-${pidx}-${eidx}`;
+  if (_activeEPopD && _activeEPopD !== id) {
+    const prev = document.getElementById(_activeEPopD);
+    if (prev) prev.classList.remove('open');
+  }
+  const pop = document.getElementById(id);
+  if (!pop) return;
+  const opening = !pop.classList.contains('open');
+  pop.classList.toggle('open', opening);
+  _activeEPopD = opening ? id : null;
+  if (opening) {
+    fillEstadoOptsD(pidx, eidx, '');
+    const inp = pop.querySelector('.estado-pop-inp');
+    if (inp) setTimeout(() => inp.focus(), 50);
+  }
+}
+
+function fillEstadoOptsD(pidx, eidx, q) {
+  const pop = document.getElementById(`epop-${pidx}-${eidx}`);
+  if (!pop) return;
+  const cont = pop.querySelector('.estado-opts');
+  if (!cont) return;
+  cont.innerHTML = ESTADOS_D
+    .filter(e => e.nombre.toLowerCase().includes(q.toLowerCase()))
+    .map(e => `<div class="estado-opt" onmousedown="selEstadoD(${pidx},${eidx},'${e.nombre.replace(/'/g, "\\'")}')"><div class="estado-dot" style="background:${e.color}"></div>${e.nombre}</div>`)
+    .join('');
+}
+
+function selEstadoD(pidx, eidx, nombre) {
+  cambiarEstadoDiseno(pidx, eidx, nombre);
+  const pop = document.getElementById(`epop-${pidx}-${eidx}`);
+  if (pop) pop.classList.remove('open');
+  _activeEPopD = null;
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.estado-wrap')) {
+    document.querySelectorAll('#page-diseno .estado-pop.open').forEach(p => p.classList.remove('open'));
+    _activeEPopD = null;
+  }
+});
+
+function cambiarEstadoDiseno(pidx, eidx, nuevoEstado) {
+  PEDIDOS_ANGIE_SIMULADOS[pidx].prods[eidx].estado = nuevoEstado;
+  if (typeof window.__angieSave === 'function') window.__angieSave(PEDIDOS_ANGIE_SIMULADOS);
+  renderDiseno();
+}
+
+function abrirFichaDiseno(pidx) {
+  const p = PEDIDOS_ANGIE_SIMULADOS[pidx];
+  if (!p) return;
+  document.getElementById('ficha-d-titulo').textContent = p.bebe || '—';
+  document.getElementById('ficha-d-sub').textContent = p.mama || '';
+  const pagoClass = p.pago === 'Pagado' ? 'pago-pagado' : p.pago === 'Saldo pendiente' ? 'pago-saldo' : 'pago-vacio';
+  let html = '';
+  if (p.fechaSesion) html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">📅 Sesión: ${fmt(p.fechaSesion)}</div>`;
+  if (p.notas) html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">📌 ${p.notas}</div>`;
+  html += '<div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px;">Productos</div>';
+  (p.prods || []).forEach(x => {
+    const col = (ESTADOS_D.find(e => e.nombre === x.estado)||{color:'#f0efed'}).color;
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;font-size:13px;">${x.nombre||'—'}</div>
+      ${x.nota ? `<span style="font-size:11px;color:var(--muted);">📝 ${x.nota}</span>` : ''}
+      <span style="background:${col};color:var(--marron-d);padding:3px 10px;border-radius:10px;font-size:10px;font-weight:600;">${x.estado||'—'}</span>
+    </div>`;
+  });
+  html += `<div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+    <span style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;">Pago</span>
+    <span class="${pagoClass} pago-sel">${p.pago||'—'}</span>
+  </div>`;
+  document.getElementById('ficha-d-body').innerHTML = html;
+  document.getElementById('modal-ficha-d').style.display = 'block';
+}
+
+function cerrarFichaDiseno() {
+  document.getElementById('modal-ficha-d').style.display = 'none';
 }
 
 function renderDiseno() {
@@ -1205,7 +1318,7 @@ function renderDiseno() {
       <span class="seccion-titulo">Listos para retirar</span>
       <span class="count-badge">${listos.length}</span>
     </div>`;
-    html += listos.map((p,i) => disenoCardHtml(p, 'listo-'+i)).join('');
+    html += listos.map(p => disenoCardHtml(p, PEDIDOS_ANGIE_SIMULADOS.indexOf(p))).join('');
   }
 
   if (parciales.length) {
@@ -1213,7 +1326,7 @@ function renderDiseno() {
       <span class="seccion-titulo">En proceso</span>
       <span class="count-badge">${parciales.length}</span>
     </div>`;
-    html += parciales.map((p,i) => disenoCardHtml(p, 'proc-'+i)).join('');
+    html += parciales.map(p => disenoCardHtml(p, PEDIDOS_ANGIE_SIMULADOS.indexOf(p))).join('');
   }
 
   if (!todos.length) {
@@ -1268,10 +1381,26 @@ onSnapshot(REF_RENU, snap => {
 });
 
 // Guardar sesiones de Renu (llamado desde marcarCambio)
+window.__angieSave = async function(lista) {
+  const clean = JSON.parse(JSON.stringify(lista, (k, v) => v === undefined ? null : v));
+  await setDoc(REF_ANGIE, { lista: clean, updated: new Date().toISOString() });
+};
+
 window.__renuSave = async function(data) {
   const clean = JSON.parse(JSON.stringify(data, (k, v) => v === undefined ? null : v));
   await setDoc(REF_RENU, { lista: clean, updated: new Date().toISOString() });
 };
 </script>
+
+<div class="overlay" id="modal-ficha-d" onclick="if(event.target===this)cerrarFichaDiseno()">
+  <div class="mbox">
+    <div class="mbox-title" id="ficha-d-titulo"></div>
+    <div class="mbox-sub" id="ficha-d-sub"></div>
+    <div id="ficha-d-body" style="margin-top:12px;"></div>
+    <div class="mbox-btns">
+      <button class="btn-sec" onclick="cerrarFichaDiseno()">Cerrar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
