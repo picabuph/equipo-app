@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Picabú — Equipo ✦ MODO PRUEBA</title>
+<link href="https://fonts.googleapis.com/css2?family=Yeseva+One&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --rosa:#d7b3a9; --rosa-d:#c49a8e; --rosa-l:#f0e4df;
+  --arena:#e0c9b9; --arena-l:#f5ede5; --arena-d:#c4a98c;
+  --marron:#7f6d67; --marron-d:#4a3a35;
+  --crema:#d1bcb3; --bg:#faf6f3; --white:#fffcfa;
+  --border:#e8dad2; --text:#3a2e2a; --muted:#9a8078;
+}
+body { font-family:'Montserrat',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:14px; }
+
+.test-banner { background:#4a3a35; color:#f0e4df; text-align:center; padding:8px 16px; font-size:10px; letter-spacing:2px; text-transform:uppercase; font-weight:600; }
+.test-banner span { background:#d7b3a9; color:#4a3a35; padding:2px 8px; border-radius:10px; margin-left:8px; font-size:9px; }
+
+header { background:var(--marron-d); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
+.logo { font-family:'Yeseva One',serif; font-size:22px; color:var(--rosa-l); letter-spacing:1px; }
+.logo-sub { font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--crema); margin-top:1px; }
+.logo-equipo { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--rosa); margin-top:3px; font-weight:500; }
+.header-btns { display:flex; gap:8px; }
+.hbtn { padding:6px 14px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:7px; color:var(--crema); font-size:10px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; font-family:'Montserrat',sans-serif; }
+.hbtn:hover { background:rgba(255,255,255,0.2); }
+
+#sync-bandeja { display:none; align-items:center; gap:10px; background:#fdf0f0; border:1px solid #e8c5c5; border-radius:8px; margin:10px 16px 0; padding:8px 14px; font-size:12px; color:#a05050; }
+
+.container { max-width:800px; margin:0 auto; padding:16px 14px; }
+.empty { text-align:center; padding:48px 20px; color:var(--muted); font-size:13px; }
+
+.alerta-15 { background:#fef3e2; border:1px solid #f0c040; border-radius:10px; padding:12px 14px; margin-bottom:14px; }
+.alerta-15-titulo { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#9a6400; font-weight:600; margin-bottom:6px; }
+.alerta-15-item { font-size:12px; color:#7a5200; padding:3px 0; display:flex; align-items:center; gap:8px; }
+.alerta-15-item::before { content:'⚠️'; }
+
+.seccion-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; margin-top:4px; }
+.seccion-titulo { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); font-weight:600; margin:0; }
+.count-badge { font-size:10px; background:var(--arena); color:var(--marron-d); padding:2px 8px; border-radius:10px; font-weight:600; }
+.toggle-entregadas { background:none; border:none; color:var(--muted); font-size:10px; cursor:pointer; letter-spacing:1px; text-transform:uppercase; font-family:'Montserrat',sans-serif; padding:0; margin-left:auto; }
+.toggle-entregadas:hover { color:var(--marron); }
+
+/* CARD COMPACTA */
+.c-card { background:var(--white); border:1px solid var(--border); border-radius:12px; margin-bottom:8px; overflow:hidden; transition:opacity 0.2s; }
+.c-card.drag-over { border:2px dashed var(--rosa-d); opacity:0.7; }
+.c-card.vista { opacity:0.55; }
+.c-header { display:flex; align-items:center; padding:9px 12px; gap:8px; }
+.c-nombres { flex:1; min-width:0; }
+.c-bebe { font-family:'Yeseva One',serif; font-size:15px; color:var(--marron-d); display:flex; align-items:center; gap:6px; }
+.drag-handle { color:var(--muted); font-size:13px; cursor:grab; opacity:0.35; user-select:none; flex-shrink:0; }
+.drag-handle:active { cursor:grabbing; }
+.c-mama { font-size:11px; color:var(--muted); margin-top:1px; }
+.c-badges { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:3px; }
+.badge-prod { font-size:9px; background:#fde8b0; color:#7a5200; padding:1px 7px; border-radius:20px; font-weight:600; letter-spacing:1px; text-transform:uppercase; }
+.badge-video { font-size:9px; background:#e8d4f5; color:#5a2a7a; padding:1px 7px; border-radius:20px; font-weight:600; letter-spacing:1px; text-transform:uppercase; }
+.badge-paquete { font-size:9px; background:var(--arena-l); color:var(--marron); padding:1px 7px; border-radius:20px; font-weight:600; letter-spacing:1px; text-transform:uppercase; border:1px solid var(--arena); }
+
+/* SELECTOR DE ESTADO INLINE */
+.estado-select { font-size:10px; font-weight:600; padding:5px 24px 5px 10px; border-radius:20px; border:none; cursor:pointer; font-family:'Montserrat',sans-serif; letter-spacing:0.5px; white-space:nowrap; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='currentColor' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; flex-shrink:0; }
+.estado-select:focus { outline:none; }
+.sel-galeria { background:#e8dad2; color:#5a4a42; }
+.sel-pendiente-c { background:#b3c6e0; color:#1a3a5c; }
+.sel-edicion { background:#d4b3d7; color:#3a1a4a; }
+.sel-para-subir { background:#f0c84a; color:#5a4400; }
+.sel-subidas { background:#d4edda; color:#1a5c2a; }
+
+.c-body { padding:0 12px 10px; }
+.c-info-row { display:flex; align-items:flex-start; gap:14px; margin-bottom:8px; flex-wrap:wrap; }
+.c-info-item { display:flex; flex-direction:column; gap:1px; }
+.c-info-label { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:500; }
+.c-info-val { font-size:12px; color:var(--text); font-weight:500; }
+.c-info-val.urgente { color:#c94040; font-weight:700; }
+.c-info-val.fotos-base { font-size:11px; color:var(--muted); font-weight:400; }
+.c-notas { background:var(--arena-l); border-radius:7px; padding:7px 10px; font-size:11px; color:var(--marron-d); line-height:1.5; margin-bottom:8px; border-left:3px solid var(--arena-d); }
+.c-notas-label { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:500; margin-bottom:3px; }
+
+.alerta-60 { background:#fce8d4; border:1px solid #e0a060; border-radius:7px; padding:6px 10px; margin-bottom:8px; font-size:11px; color:#7a3a00; }
+.alerta-60-label { font-size:9px; letter-spacing:2px; text-transform:uppercase; font-weight:600; margin-bottom:1px; color:#9a5000; }
+
+.fecha-barra { height:3px; border-radius:2px; background:var(--border); margin-top:5px; overflow:hidden; }
+.fecha-barra-fill { height:100%; border-radius:2px; transition:width 0.3s; }
+
+.c-footer { display:flex; align-items:center; gap:8px; flex-wrap:wrap; border-top:1px solid var(--border); padding:7px 12px; position:relative; }
+.btn-accion { padding:5px 12px; border-radius:7px; font-size:10px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; font-family:'Montserrat',sans-serif; font-weight:500; border:1px solid var(--border); background:none; color:var(--marron); }
+.btn-accion:hover { background:var(--arena-l); }
+.btn-accion-pri { background:var(--marron-d); color:var(--rosa-l); border-color:var(--marron-d); }
+.btn-accion-pri:hover { background:var(--marron); }
+.btn-accion-video { background:#e8d4f5; color:#5a2a7a; border-color:#d4b3e8; }
+.btn-accion-del { background:none; border:1px solid #c97b7b; color:#c97b7b; }
+.btn-accion-del:hover { background:#fde8e8; }
+.sync-card { position:absolute; bottom:8px; right:12px; display:flex; align-items:center; gap:3px; }
+
+/* FAB */
+.fab { position:fixed; bottom:24px; right:20px; width:52px; height:52px; background:var(--marron-d); color:var(--rosa-l); border:none; border-radius:50%; font-size:26px; cursor:pointer; box-shadow:0 4px 16px rgba(74,58,53,0.4); display:flex; align-items:center; justify-content:center; z-index:100; }
+
+/* MODAL */
+.overlay { display:none; position:fixed; inset:0; background:rgba(58,46,42,0.55); z-index:600; padding:20px; overflow-y:auto; }
+.overlay.open { display:flex; align-items:flex-start; justify-content:center; }
+.mbox { background:var(--white); border-radius:14px; padding:22px; width:100%; max-width:460px; margin:40px auto; }
+.mbox-title { font-family:'Yeseva One',serif; font-size:18px; margin-bottom:4px; color:var(--marron-d); }
+.mbox-sub { font-size:12px; color:var(--muted); margin-bottom:18px; }
+.fl { margin-bottom:13px; }
+.fl label { display:block; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:5px; font-weight:500; }
+.fl input, .fl textarea, .fl select { width:100%; padding:9px 13px; border:1px solid var(--border); border-radius:10px; font-size:13px; background:var(--bg); color:var(--text); font-family:'Montserrat',sans-serif; outline:none; }
+.fl input:focus, .fl textarea:focus, .fl select:focus { border-color:var(--rosa); }
+.fl select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239a8078' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; }
+.parser-box { background:var(--arena-l); border:1px dashed var(--arena-d); border-radius:10px; padding:11px 13px; margin-bottom:13px; }
+.parser-box label { display:block; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--marron); margin-bottom:5px; font-weight:600; }
+.parser-box textarea { width:100%; padding:7px 11px; border:1px solid var(--arena); border-radius:8px; font-size:12px; background:var(--white); color:var(--text); font-family:'Montserrat',sans-serif; outline:none; resize:none; }
+.parser-hint { font-size:10px; color:var(--muted); margin-top:4px; font-style:italic; }
+.fotos-base-hint { font-size:11px; color:var(--marron); margin-top:5px; font-weight:500; }
+.mbox-btns { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; flex-wrap:wrap; }
+.btn-sec { padding:8px 18px; background:none; border:1px solid var(--border); border-radius:9px; cursor:pointer; font-size:12px; color:var(--muted); font-family:'Montserrat',sans-serif; }
+.btn-pri { padding:8px 20px; background:var(--marron-d); color:var(--rosa-l); border:none; border-radius:9px; cursor:pointer; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-family:'Montserrat',sans-serif; font-weight:500; }
+.btn-eliminar { padding:8px 14px; background:none; border:1px solid #c97b7b; border-radius:9px; cursor:pointer; font-size:12px; color:#c97b7b; font-family:'Montserrat',sans-serif; }
+
+.seccion-sep { height:1px; background:var(--border); margin:16px 0 14px; }
+
+.sim-banner { background:var(--arena-l); border:1px solid var(--arena); border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:var(--marron); }
+.sim-banner strong { font-weight:600; }
+.sim-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.sim-btn { padding:5px 11px; border-radius:7px; font-size:10px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; font-family:'Montserrat',sans-serif; font-weight:500; border:1px solid var(--arena-d); background:var(--white); color:var(--marron-d); }
+.sim-btn:hover { background:var(--arena); }
+
+/* TABS */
+.tabs-bar { background:var(--marron); display:flex; padding:0 16px; }
+.tab-btn { padding:9px 16px; font-size:10px; letter-spacing:2px; text-transform:uppercase; font-weight:500; color:var(--crema); cursor:pointer; border:none; border-bottom:2px solid transparent; background:none; opacity:0.6; white-space:nowrap; font-family:'Montserrat',sans-serif; }
+.tab-btn.active { opacity:1; border-bottom-color:var(--rosa); }
+.page { display:none; }
+.page.active { display:block; }
+
+/* NOMBRES compactos */
+.c-bebe-row { display:flex; align-items:baseline; gap:5px; min-width:0; }
+.c-bebe { flex-shrink:0; }
+.c-mama-inline { font-size:11px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
+
+/* DISEÑO — override exacto de Picabú App (scoped a #page-diseno) */
+#page-diseno .c-card { background:var(--white); border:1px solid var(--border); border-radius:14px; margin-bottom:14px; overflow:visible; }
+#page-diseno .c-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; gap:10px; border-bottom:1px solid var(--border); }
+#page-diseno .c-nombre { font-family:'Yeseva One',serif; font-size:15px; color:var(--marron-d); display:inline; }
+#page-diseno .c-mama { font-family:'Montserrat',sans-serif; font-size:13px; color:var(--muted); font-weight:300; display:inline; margin-left:8px; white-space:nowrap; }
+#page-diseno .c-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+#page-diseno .c-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+#page-diseno .pago-sel { font-size:10px; font-weight:500; padding:4px 10px; border-radius:20px; font-family:'Montserrat',sans-serif; white-space:nowrap; border:none; }
+#page-diseno .pago-vacio  { background:var(--arena-l); color:var(--marron); }
+#page-diseno .pago-pagado { background:#d4edda; color:#1a5c2a; }
+#page-diseno .pago-saldo  { background:#fad7d7; color:#8b1a1a; }
+#page-diseno .c-body { padding:4px 18px 10px; }
+#page-diseno .prod-row { display:flex; align-items:center; gap:8px; padding:9px 4px; border-bottom:1px solid var(--arena-l); }
+#page-diseno .prod-row:last-child { border-bottom:none; }
+#page-diseno .prod-nombre { flex:1; font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#page-diseno .prod-drag { color:var(--muted); cursor:default; font-size:14px; flex-shrink:0; user-select:none; }
+#page-diseno .ficha-btn { width:24px; height:24px; border-radius:6px; background:var(--arena-l); border:1px solid var(--arena); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--muted); font-size:13px; padding:0; line-height:1; cursor:default; }
+#page-diseno .nota-ico { font-size:12px; flex-shrink:0; width:18px; text-align:center; }
+#page-diseno .estado-wrap { position:relative; flex-shrink:0; width:140px; }
+#page-diseno .estado-btn { font-size:10px; font-weight:500; padding:4px 10px; border-radius:20px; border:none; white-space:nowrap; font-family:'Montserrat',sans-serif; min-width:100px; text-align:center; cursor:default; }
+#page-diseno .nped-tag { min-width:28px; height:20px; border-radius:5px; background:var(--arena-l); border:1px solid var(--arena); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:10px; color:var(--muted); font-weight:500; padding:0 5px; font-family:'Montserrat',sans-serif; white-space:nowrap; letter-spacing:0.5px; }
+#page-diseno .nped-tag.filled { background:#d4c8bf; color:var(--marron-d); border-color:#c4b8af; font-weight:600; }
+#page-diseno .c-footer { display:flex; align-items:center; gap:10px; padding:10px 18px; border-top:1px solid var(--border); flex-wrap:wrap; position:relative; }
+/* alertas estilo Picabú */
+#page-diseno .alert-box { background:#fef3e2; border:1px solid #f0c040; border-radius:10px; padding:14px 16px; margin-bottom:16px; flex:1; min-width:0; }
+#page-diseno .alert-title { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#9a6400; font-weight:600; margin-bottom:10px; }
+#page-diseno .alert-grupo { margin-bottom:10px; }
+#page-diseno .alert-cliente { font-size:11px; font-weight:600; color:#7a5200; margin-bottom:4px; }
+#page-diseno .alert-item { display:flex; align-items:center; justify-content:space-between; padding:5px 0 5px 10px; gap:8px; flex-wrap:wrap; }
+#page-diseno .alert-prod { font-size:12px; color:#3a2e2a; flex:1; }
+#page-diseno .alert-badge { font-size:10px; background:#fde8b0; color:#7a5200; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+#page-diseno .alertas-wrap { display:flex; gap:10px; margin-bottom:14px; align-items:flex-start; }
+@media(max-width:520px) {
+  #page-diseno .alertas-wrap { flex-direction:column; }
+  #page-diseno .prod-row { flex-wrap:wrap; gap:0; padding:8px 0; row-gap:0; }
+  #page-diseno .prod-drag { display:none; }
+  #page-diseno .ficha-btn { order:1; margin-right:7px; flex-shrink:0; }
+  #page-diseno .prod-row .prod-nombre { order:2; flex:1; font-size:12px; min-width:0; }
+  #page-diseno .nota-ico { order:3; width:auto; font-size:11px; flex-shrink:0; }
+  #page-diseno .prod-row::after { content:''; display:block; width:100%; order:9; height:0; }
+  #page-diseno .nped-tag { order:10; margin-right:6px; flex-shrink:0; margin-top:5px; }
+  #page-diseno .estado-wrap { order:11; flex:1; min-width:0; margin-top:5px; width:auto; }
+  #page-diseno .estado-btn { width:100%; font-size:10px; text-align:center; min-width:unset; padding:3px 8px; }
+}
+</style>
+</head>
+<body>
+
+<div class="test-banner" id="firebase-banner">
+  Equipo Picabú <span id="fb-badge">Conectando…</span>
+</div>
+
+<header>
+  <div>
+    <div class="logo">Picabú</div>
+    <div class="logo-sub">Fotografía</div>
+    <div class="logo-equipo">✦ Equipo Picabú</div>
+  </div>
+  <div class="header-btns">
+    <button class="hbtn" onclick="exportarDatos()">↓ Exportar</button>
+    <button class="hbtn" onclick="document.getElementById('import-file').click()">↑ Importar</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importarDatos(this)">
+  </div>
+</header>
+
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="showTab('sesiones')">Sesiones</button>
+  <button class="tab-btn" onclick="showTab('diseno')">Diseño</button>
+</div>
+
+<div id="sync-bandeja"></div>
+
+<div class="page active" id="page-sesiones">
+  <div class="container" id="app"></div>
+</div>
+<div class="page" id="page-diseno">
+  <div class="container" id="diseno-container"></div>
+</div>
+
+<button class="fab" onclick="abrirModalNuevo()" title="Agregar cliente">+</button>
+
+<!-- MODAL CLIENTE -->
+<div class="overlay" id="modal-cliente">
+  <div class="mbox">
+    <div class="mbox-title" id="modal-titulo">Nuevo cliente</div>
+    <div class="mbox-sub" id="modal-sub">Completá los datos de la sesión</div>
+
+    <div class="parser-box">
+      <label>Pegar desde agenda (opcional)</label>
+      <textarea id="m-parser" rows="2" placeholder="Ej: Clara CS (Melody Petrosillo) Paq Premium" oninput="aplicarParser()"></textarea>
+      <div class="parser-hint">Detecta nombre, mamá y paquete automáticamente — podés editar todo después</div>
+    </div>
+
+    <div class="fl">
+      <label>Nombre del bebé / sesión</label>
+      <input type="text" id="m-bebe" placeholder="Ej: Emilia" autocomplete="off">
+    </div>
+    <div class="fl">
+      <label>Nombre de la mamá</label>
+      <input type="text" id="m-mama" placeholder="Ej: Laura García" autocomplete="off">
+    </div>
+    <div class="fl">
+      <label>Fecha de sesión</label>
+      <input type="date" id="m-fecha-sesion">
+    </div>
+    <div class="fl">
+      <label>Paquete</label>
+      <select id="m-paquete" onchange="actualizarFotosHint()">
+        <option value="">— sin especificar —</option>
+        <option value="petite">Petite (10 fotos)</option>
+        <option value="premium">Premium (20 fotos)</option>
+        <option value="gold">Gold (30 fotos)</option>
+        <option value="petite familiar">Petite Familiar (15 fotos)</option>
+        <option value="premium familia">Premium Familia (25 fotos)</option>
+        <option value="petite lifestyle">Petite Lifestyle (25 fotos)</option>
+        <option value="premium lifestyle">Premium Lifestyle (50 fotos)</option>
+      </select>
+      <div class="fotos-base-hint" id="fotos-hint" style="display:none"></div>
+    </div>
+    <div class="fl">
+      <label>Estado</label>
+      <select id="m-estado" onchange="sincEstadoModal()">
+        <option value="galeria_pendiente">Galería pendiente</option>
+        <option value="pendiente_cliente">Pendiente cliente</option>
+        <option value="edicion_renu">Edición</option>
+        <option value="para_subir">Para subir</option>
+        <option value="subidas">Subidas</option>
+      </select>
+    </div>
+    <div class="fl" id="wrap-fecha-conf" style="display:none">
+      <label>Fecha confirmación de fotos</label>
+      <input type="date" id="m-fecha-conf" oninput="autoLimite()">
+    </div>
+    <div class="fl" id="wrap-fecha-limite" style="display:none">
+      <label>Fecha límite entrega — 30 días (editable)</label>
+      <input type="date" id="m-fecha-limite">
+    </div>
+    <div class="fl" id="wrap-cant" style="display:none">
+      <label>Cantidad de fotos elegidas</label>
+      <input type="number" id="m-cant" placeholder="Ej: 40" min="1">
+    </div>
+    <div class="fl">
+      <label>Notas visibles</label>
+      <textarea id="m-notas" rows="3" placeholder="Ej: PRODUCTOS — prioridad entrega. O: VER NOTAS."></textarea>
+    </div>
+    <div class="fl" id="wrap-prod" style="display:none">
+      <label>Tiene productos encargados</label>
+      <select id="m-prod">
+        <option value="no">No</option>
+        <option value="si">Sí</option>
+      </select>
+    </div>
+    <div class="mbox-btns">
+      <button class="btn-eliminar" id="btn-elim" style="display:none;margin-right:auto" onclick="eliminarCliente()">Eliminar</button>
+      <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-pri" onclick="guardarCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR FOTOS -->
+<div class="overlay" id="modal-conf-fotos">
+  <div class="mbox">
+    <div class="mbox-title">Confirmar selección de fotos</div>
+    <div class="mbox-sub">Se calculan los 30 días de edición y el tope de 60 días para productos/video, ambos desde esta fecha.</div>
+    <div class="fl">
+      <label>Fecha en que eligió las fotos</label>
+      <input type="date" id="cf-fecha" oninput="cfAutoLimite()">
+    </div>
+    <div class="fl">
+      <label>Fecha límite entrega — 30 días (editable)</label>
+      <input type="date" id="cf-limite">
+    </div>
+    <div class="fl">
+      <label>Tope productos / video — 60 días (editable)</label>
+      <input type="date" id="cf-limite60">
+    </div>
+    <div class="fl">
+      <label>Cantidad de fotos elegidas</label>
+      <input type="number" id="cf-cant" placeholder="Ej: 40" min="1">
+    </div>
+    <div class="mbox-btns">
+      <button class="btn-sec" onclick="cerrarModalCF()">Cancelar</button>
+      <button class="btn-pri" onclick="confirmarFotos()">Confirmar → Edición</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── PAQUETES ─────────────────────────────────────────────────
+const PAQUETES = {
+  'petite familiar': 15, 'premium familia': 25,
+  'petite lifestyle': 25, 'premium lifestyle': 50,
+  'petite': 10, 'premium': 20, 'gold': 30
+};
+
+function fotosDelPaquete(paq) {
+  if (!paq) return null;
+  const k = paq.toLowerCase().trim();
+  for (const nombre of Object.keys(PAQUETES)) {
+    if (k.includes(nombre)) return PAQUETES[nombre];
+  }
+  return null;
+}
+
+// ─── DATOS ────────────────────────────────────────────────────
+const PEDIDOS_ANGIE_SIMULADOS = [];
+
+let clientes = [];
+
+let editandoIdx = null;
+let confirmandoIdx = null;
+let mostrarEntregadas = false;
+let dragSrcId = null;
+let ordenEdicion = [];
+
+// ─── SYNC (diseñado para Firebase — igual que picabu app) ─────
+let fbSyncStatus = (()=>{ try{ return JSON.parse(localStorage.getItem('equipo_sync')||'{}'); }catch(e){ return {}; } })();
+
+function fmtTs(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function setSyncStatus(id, status) {
+  fbSyncStatus[id] = { status, ts: status === 'saving' ? (fbSyncStatus[id]?.ts||null) : new Date().toISOString() };
+  try { localStorage.setItem('equipo_sync', JSON.stringify(fbSyncStatus)); } catch(e){}
+  const el = document.getElementById('sync-'+id);
+  if (el) updateSyncEl(el, id);
+  actualizarBandeja();
+}
+
+function updateSyncEl(el, id) {
+  const info = fbSyncStatus[id] || {};
+  const { status, ts } = info;
+  const tsStr = fmtTs(ts);
+  if (status === 'saving') {
+    el.innerHTML = `<span style="color:#aaa;font-size:11px;">⏳ guardando…</span>`;
+  } else if (status === 'ok') {
+    el.innerHTML = `<span style="color:#7aaa8a;font-size:10px;" title="Guardado en la nube${ts?' — '+tsStr:''}">✓ ${tsStr}</span>`;
+  } else if (status === 'error') {
+    el.innerHTML = `<span style="color:#c97b7b;font-size:10px;" title="Error al guardar${ts?' — '+tsStr:''}">✗ ${tsStr}</span> <button onclick="reintentarSync('${id}')" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:4px;font-size:10px;padding:1px 5px;cursor:pointer;margin-left:3px;">↺</button>`;
+  } else {
+    el.innerHTML = `<span style="color:#bbb;font-size:10px;">— sin cambios</span>`;
+  }
+}
+
+function reintentarSync(id) {
+  // Cuando se conecte Firebase: window.saveToFirebase(clientes)
+  setSyncStatus(id, 'saving');
+  setTimeout(() => setSyncStatus(id, 'error'), 800); // simulado
+}
+
+function actualizarBandeja() {
+  const errores = Object.entries(fbSyncStatus).filter(([,v]) => v.status === 'error');
+  const bandeja = document.getElementById('sync-bandeja');
+  if (!bandeja) return;
+  if (errores.length === 0) { bandeja.style.display = 'none'; bandeja.innerHTML = ''; return; }
+  const nombres = errores.map(([id]) => {
+    const c = clientes.find(x => x.id === id);
+    return c ? `<strong>${c.bebe}</strong>` : id;
+  }).join(', ');
+  bandeja.style.display = 'flex';
+  bandeja.innerHTML = `<span style="flex:1;">⚠️ No se pudo guardar en la nube: ${nombres}. Revisá tu conexión antes de cerrar.</span><button onclick="reintentarTodos()" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:5px;font-size:11px;padding:2px 10px;cursor:pointer;white-space:nowrap;">↺ Reintentar todos</button>`;
+}
+
+function reintentarTodos() {
+  const errores = Object.entries(fbSyncStatus).filter(([,v]) => v.status === 'error');
+  errores.forEach(([id]) => reintentarSync(id));
+}
+
+let _ignorarSnapshotRenu = false;
+let _fbAngieConectado = false;
+let _angieLastSync = { ts: null, tsStr: '' };
+
+function marcarCambio(id) {
+  if (typeof window.__renuSave === 'function') {
+    setSyncStatus(id, 'saving');
+    _ignorarSnapshotRenu = true;
+    window.__renuSave(clientes)
+      .then(() => { setSyncStatus(id, 'ok'); renderApp(); })
+      .catch(() => { setSyncStatus(id, 'error'); renderApp(); });
+  } else {
+    if (id) setSyncStatus(id, 'ok');
+  }
+}
+
+// Callback: datos reales de Angie llegan desde Firebase (solo lectura)
+// Si en 12 segundos no conectó, mostrar error
+setTimeout(function() {
+  if (!_fbAngieConectado) {
+    const badge = document.getElementById('fb-badge');
+    if (badge) { badge.textContent = 'Sin conexión'; badge.style.background = '#e8c5c5'; badge.style.color = '#8b1a1a'; }
+    const app = document.getElementById('app');
+    if (app && !clientes.length) app.innerHTML = '<div style="text-align:center;color:#c97b7b;font-size:13px;padding:40px 20px;">No se pudo conectar a Firebase.<br>Revisá tu conexión a internet y recargá.</div>';
+  }
+}, 12000);
+
+window.__angieUpdate = function(lista, updated) {
+  PEDIDOS_ANGIE_SIMULADOS.splice(0, PEDIDOS_ANGIE_SIMULADOS.length, ...lista);
+  _fbAngieConectado = true;
+  const ts = updated ? new Date(updated) : new Date();
+  _angieLastSync = {
+    ts: ts.getTime(),
+    tsStr: ts.getDate().toString().padStart(2,'0') + '/' + (ts.getMonth()+1).toString().padStart(2,'0') + ' ' + ts.getHours().toString().padStart(2,'0') + ':' + ts.getMinutes().toString().padStart(2,'0')
+  };
+  // Actualizar banner superior
+  const badge = document.getElementById('fb-badge');
+  if (badge) { badge.textContent = 'Firebase activo'; badge.style.background = '#a8d8a8'; badge.style.color = '#1a3a1a'; }
+  const banner = document.getElementById('firebase-banner');
+  if (banner) banner.style.background = '#2a4a2a';
+  autoSync();
+  const tabActiva = document.querySelector('.tab-btn.active')?.textContent.trim();
+  if (tabActiva === 'Diseño') renderDiseno(); else renderApp();
+};
+
+// Callback: sesiones de Renu llegan desde Firebase
+window.__renuLoad = function(lista) {
+  if (_ignorarSnapshotRenu) { _ignorarSnapshotRenu = false; return; }
+  if (lista && lista.length) {
+    clientes.splice(0, clientes.length, ...lista);
+    autoSync();
+    renderApp();
+  }
+};
+
+// ─── UTILS ────────────────────────────────────────────────────
+function hoy() { return new Date().toISOString().split('T')[0]; }
+
+function calcLimite(fecha, dias = 30) {
+  const d = new Date(fecha);
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().split('T')[0];
+}
+
+function diasDesde(f) {
+  if (!f) return 0;
+  const d = new Date(f), h = new Date();
+  h.setHours(0,0,0,0); d.setHours(0,0,0,0);
+  return Math.floor((h - d) / 86400000);
+}
+
+function diasHasta(f) {
+  if (!f) return null;
+  const d = new Date(f), h = new Date();
+  h.setHours(0,0,0,0); d.setHours(0,0,0,0);
+  return Math.floor((d - h) / 86400000);
+}
+
+function fmt(f) {
+  if (!f) return '—';
+  const [y,m,d] = f.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// ─── PARSER ───────────────────────────────────────────────────
+function parsearTexto(txt) {
+  const mamaMatch = txt.match(/\(([^)]+)\)/);
+  const mama = mamaMatch ? mamaMatch[1].trim() : '';
+  let nombre = txt.replace(/\(.*\).*/, '').trim();
+  nombre = nombre.replace(/^\d{1,2}[:h][0-9]{0,2}\s*/i, '').trim();
+  let paquete = '';
+  const paqMatch = txt.match(/paq\w*\s+([\w\s]+?)(?:\s*$)/i);
+  if (paqMatch) {
+    const raw = paqMatch[1].trim().toLowerCase();
+    for (const k of Object.keys(PAQUETES)) {
+      if (raw.includes(k)) { paquete = k; break; }
+    }
+    if (!paquete) paquete = raw;
+  }
+  return { nombre, mama, paquete };
+}
+
+function aplicarParser() {
+  const txt = document.getElementById('m-parser').value;
+  if (!txt.trim()) return;
+  const { nombre, mama, paquete } = parsearTexto(txt);
+  if (nombre) document.getElementById('m-bebe').value = nombre;
+  if (mama) document.getElementById('m-mama').value = mama;
+  if (paquete) {
+    const sel = document.getElementById('m-paquete');
+    const match = Array.from(sel.options).map(o => o.value).find(o => o === paquete || o.includes(paquete));
+    if (match) sel.value = match;
+  }
+  actualizarFotosHint();
+}
+
+function actualizarFotosHint() {
+  const paq = document.getElementById('m-paquete').value;
+  const hint = document.getElementById('fotos-hint');
+  const fotos = fotosDelPaquete(paq);
+  if (fotos) { hint.style.display = 'block'; hint.textContent = `${fotos} fotos incluidas en el paquete`; }
+  else { hint.style.display = 'none'; }
+}
+
+// ─── AUTO-SYNC CON PEDIDOS ANGIE ──────────────────────────────
+function autoSync() {
+  let changed = false;
+  PEDIDOS_ANGIE_SIMULADOS.forEach(pedido => {
+    const c = clientes.find(x =>
+      x.bebe && x.bebe.toLowerCase() === (pedido.bebe||'').toLowerCase() &&
+      x.mama && x.mama.toLowerCase() === (pedido.mama||'').toLowerCase()
+    );
+    if (!c) return;
+    if (!c.tieneProductos) { c.tieneProductos = true; changed = true; }
+    if (pedido.prods && pedido.prods.length > 0) {
+      const todosEnProd = pedido.prods.every(p => p.estado === 'En producción');
+      if (todosEnProd && c.estado === 'edicion_renu') { c.estado = 'para_subir'; changed = true; }
+      const hayListo = pedido.prods.some(p => p.estado === 'Listo en estudio');
+      if (hayListo && !c.tareaVideoDisparada) {
+        c.tareaVideoPendiente = true; c.tareaVideoDisparada = true; changed = true;
+      }
+      // Suma fotos extra de pedidos de Angie
+      const extras = pedido.prods.reduce((acc, p) => {
+        const m = p.nombre && p.nombre.match(/(\d+)\s*foto[s]?\s*extra/i);
+        return acc + (m ? parseInt(m[1]) : 0);
+      }, 0);
+      if (extras > 0 && c.paquete) {
+        const base = fotosDelPaquete(c.paquete) || 0;
+        const nuevo = base + extras;
+        if (!c.cantFotos || c.cantFotos < nuevo) { c.cantFotos = nuevo; changed = true; }
+      }
+    }
+  });
+  if (changed) renderApp();
+}
+
+// ─── ESTADO INLINE ────────────────────────────────────────────
+const ESTADO_CLASES = {
+  galeria_pendiente: 'sel-galeria',
+  pendiente_cliente: 'sel-pendiente-c',
+  edicion_renu: 'sel-edicion',
+  para_subir: 'sel-para-subir',
+  subidas: 'sel-subidas'
+};
+
+function cambiarEstadoInline(idx, nuevoEstado) {
+  const c = clientes[idx];
+  const estadoAnterior = c.estado;
+  c.estado = nuevoEstado;
+  // Si pasa a edición por primera vez: calcular fechas
+  if (nuevoEstado === 'edicion_renu' && !c.fechaConfirmacion) {
+    // Abrir modal de confirmación de fotos
+    clientes[idx].estado = estadoAnterior; // revertir hasta confirmar
+    abrirCF(idx);
+    return;
+  }
+  if (nuevoEstado === 'subidas') c.fechaSubida = hoy();
+  marcarCambio(c.id);
+  renderApp();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────
+function sortPorFechaSesion(lista) {
+  return [...lista].sort((a, b) => {
+    if (!a.fechaSesion && !b.fechaSesion) return 0;
+    if (!a.fechaSesion) return 1;
+    if (!b.fechaSesion) return -1;
+    return a.fechaSesion.localeCompare(b.fechaSesion);
+  });
+}
+
+function getEdicionOrdenada() {
+  const enEdicion = clientes.filter(c => c.estado === 'edicion_renu');
+  if (ordenEdicion.length === 0) return sortPorFechaSesion(enEdicion);
+  const ordenados = [];
+  ordenEdicion.forEach(id => { const c = enEdicion.find(x => x.id === id); if (c) ordenados.push(c); });
+  enEdicion.forEach(c => { if (!ordenEdicion.includes(c.id)) ordenados.push(c); });
+  return ordenados;
+}
+
+function renderApp() {
+  const app = document.getElementById('app');
+
+  const alertas15 = clientes.filter(c =>
+    c.estado === 'pendiente_cliente' && c.fechaEnvioGaleria && diasDesde(c.fechaEnvioGaleria) >= 15
+  );
+  const preEdicion = sortPorFechaSesion(clientes.filter(c => ['galeria_pendiente','pendiente_cliente'].includes(c.estado)));
+  const enEdicion = getEdicionOrdenada();
+  const paraSubir = sortPorFechaSesion(clientes.filter(c => c.estado === 'para_subir'));
+  const terminados = clientes.filter(c => c.estado === 'subidas');
+
+  let html = '';
+
+  if (!clientes.length) {
+    html += `<div style="text-align:center;color:var(--muted);font-size:13px;padding:40px 20px;">${_fbAngieConectado ? 'No hay sesiones todavía. Tocá + para agregar una.' : 'Conectando a Firebase…'}</div>`;
+  }
+
+  if (alertas15.length > 0) {
+    html += `<div class="alerta-15">
+      <div class="alerta-15-titulo">⚠ Sin respuesta — más de 15 días</div>
+      ${alertas15.map(c => `<div class="alerta-15-item">${c.bebe} (${c.mama}) — ${diasDesde(c.fechaEnvioGaleria)} días sin respuesta</div>`).join('')}
+    </div>`;
+  }
+
+  if (preEdicion.length > 0) {
+    html += `<div class="seccion-header">
+      <div class="seccion-titulo">Por confirmar</div>
+      <span class="count-badge">${preEdicion.length}</span>
+    </div>`;
+    preEdicion.forEach(c => { html += renderCard(c, clientes.indexOf(c)); });
+  }
+
+  if (enEdicion.length > 0) {
+    html += `<div class="seccion-header">
+      <div class="seccion-titulo">Edición</div>
+      <span class="count-badge">${enEdicion.length}</span>
+    </div>`;
+    enEdicion.forEach(c => { html += renderCard(c, clientes.indexOf(c), false, true); });
+  }
+
+  if (paraSubir.length > 0) {
+    html += `<div class="seccion-header">
+      <div class="seccion-titulo">Para subir</div>
+      <span class="count-badge">${paraSubir.length}</span>
+    </div>`;
+    paraSubir.forEach(c => { html += renderCard(c, clientes.indexOf(c)); });
+  }
+
+  if (terminados.length > 0) {
+    html += `<div class="seccion-sep"></div>
+    <div class="seccion-header">
+      <div class="seccion-titulo">Entregadas</div>
+      <span class="count-badge">${terminados.length}</span>
+      <button class="toggle-entregadas" onclick="toggleEntregadas()">${mostrarEntregadas ? '▲ Ocultar' : '▼ Mostrar'}</button>
+    </div>`;
+    if (mostrarEntregadas) {
+      terminados.forEach(c => { html += renderCard(c, clientes.indexOf(c), true); });
+    }
+  }
+
+  app.innerHTML = html;
+  actualizarBandeja();
+
+  // Drag listeners para edición
+  app.querySelectorAll('.card-edicion').forEach(el => {
+    el.addEventListener('dragstart', onDragStart);
+    el.addEventListener('dragover', onDragOver);
+    el.addEventListener('drop', onDrop);
+    el.addEventListener('dragend', onDragEnd);
+  });
+}
+
+function estadoSelectHtml(idx, estadoActual) {
+  const opciones = [
+    ['galeria_pendiente', 'Galería pendiente'],
+    ['pendiente_cliente', 'Pendiente cliente'],
+    ['edicion_renu', 'Edición'],
+    ['para_subir', 'Para subir'],
+    ['subidas', 'Subidas ✓'],
+  ];
+  const clase = ESTADO_CLASES[estadoActual] || 'sel-galeria';
+  const opts = opciones.map(([v, l]) => `<option value="${v}" ${estadoActual===v?'selected':''}>${l}</option>`).join('');
+  return `<select class="estado-select ${clase}" onchange="cambiarEstadoInline(${idx}, this.value)">${opts}</select>`;
+}
+
+function renderCard(c, idx, compacto = false, conDrag = false) {
+  const diasR = c.fechaLimite ? diasHasta(c.fechaLimite) : null;
+  const urgente = diasR !== null && diasR <= 5;
+  const fotosBase = fotosDelPaquete(c.paquete);
+  const fotosExtras = (c.cantFotos && fotosBase && c.cantFotos > fotosBase) ? c.cantFotos - fotosBase : 0;
+
+  let info = '';
+
+  if (c.fechaSesion) {
+    info += `<div class="c-info-item">
+      <span class="c-info-label">Sesión</span>
+      <span class="c-info-val">${fmt(c.fechaSesion)}</span>
+    </div>`;
+  }
+
+  // Fotos: antes de confirmar → base del paquete; después → real
+  if (['galeria_pendiente','pendiente_cliente'].includes(c.estado)) {
+    if (fotosBase) {
+      info += `<div class="c-info-item">
+        <span class="c-info-label">Fotos incluidas</span>
+        <span class="c-info-val fotos-base">${fotosBase} fotos</span>
+      </div>`;
+    }
+  } else if (c.cantFotos) {
+    let fotosLabel = `${c.cantFotos} fotos`;
+    if (fotosExtras > 0) fotosLabel += ` (${fotosBase} + ${fotosExtras} extra)`;
+    info += `<div class="c-info-item">
+      <span class="c-info-label">Fotos a editar</span>
+      <span class="c-info-val">${fotosLabel}</span>
+    </div>`;
+  }
+
+  // Fecha límite: 30 días desde selección (edicion + para_subir)
+  if (c.fechaLimite && ['edicion_renu','para_subir'].includes(c.estado)) {
+    const bw = Math.max(0, Math.min(100, 100 - (diasR/30*100)));
+    const bc = diasR <= 5 ? '#e05050' : diasR <= 10 ? '#e0a030' : '#5cad80';
+    const label = c.estado === 'edicion_renu' ? 'Límite edición' : 'Límite para subir';
+    info += `<div class="c-info-item">
+      <span class="c-info-label">${label} (30 días)</span>
+      <span class="c-info-val ${urgente?'urgente':''}">
+        ${fmt(c.fechaLimite)}
+        ${diasR !== null ? `<span style="font-size:11px;color:${bc};margin-left:5px">(${diasR > 0 ? diasR+' días' : '¡Hoy!'})</span>` : ''}
+      </span>
+      <div class="fecha-barra"><div class="fecha-barra-fill" style="width:${bw}%;background:${bc}"></div></div>
+    </div>`;
+  }
+
+  // Alerta 60 días video
+  let alerta60 = '';
+  if (c.fechaLimite60 && c.tareaVideoPendiente && !c.tareaVideoHecha) {
+    const d60 = diasHasta(c.fechaLimite60);
+    const col60 = d60 <= 10 ? '#c94040' : d60 <= 20 ? '#9a5000' : '#7a3a00';
+    alerta60 = `<div class="alerta-60">
+      <div class="alerta-60-label">🎬 Tope entrega para video (60 días)</div>
+      <span style="font-weight:600;color:${col60}">${fmt(c.fechaLimite60)}</span>
+      <span style="font-size:11px;margin-left:5px">${d60 > 0 ? '('+d60+' días)' : '(¡Hoy!)'}</span>
+    </div>`;
+  }
+
+  const syncHtml = (() => {
+    const info = fbSyncStatus[c.id] || {};
+    if (info.status === 'saving') return `<span style="color:#aaa;font-size:10px;">⏳ guardando…</span>`;
+    if (info.status === 'ok') return `<span style="color:#7aaa8a;font-size:10px;" title="Guardado — ${fmtTs(info.ts)}">✓ ${fmtTs(info.ts)}</span>`;
+    if (info.status === 'error') return `<span style="color:#c97b7b;font-size:10px;">✗ ${fmtTs(info.ts)}</span> <button onclick="reintentarSync('${c.id}')" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:4px;font-size:10px;padding:1px 5px;cursor:pointer;margin-left:3px;">↺</button>`;
+    return `<span style="color:#ccc;font-size:10px;">☁ sincronizado</span>`;
+  })();
+
+  let acciones = '';
+  if (!compacto) {
+    if (c.estado === 'galeria_pendiente')
+      acciones += `<button class="btn-accion" onclick="marcarEnvioGaleria(${idx})">📤 Galería enviada</button>`;
+    if (c.estado === 'pendiente_cliente')
+      acciones += `<button class="btn-accion btn-accion-pri" onclick="abrirCF(${idx})">✓ Cliente eligió fotos</button>`;
+    if (c.estado === 'edicion_renu')
+      acciones += `<button class="btn-accion btn-accion-pri" onclick="marcarEdicionTerminada(${idx})">✓ Edición terminada</button>`;
+    if (c.estado === 'para_subir')
+      acciones += `<button class="btn-accion btn-accion-pri" onclick="marcarSubidas(${idx})">✓ Fotos subidas</button>`;
+    if (c.tareaVideoPendiente && !c.tareaVideoHecha)
+      acciones += ` <button class="btn-accion btn-accion-video" onclick="marcarVideo(${idx})">🎬 Video grabado</button>`;
+  } else {
+    acciones += `<button class="btn-accion" onclick="marcarVista(${idx})">${c.vista ? '✓ Vista' : 'Marcar vista'}</button>`;
+    acciones += `<button class="btn-accion btn-accion-del" onclick="eliminarEntregada(${idx})">Eliminar</button>`;
+  }
+
+  const dragAttrs = conDrag
+    ? `class="c-card card-edicion" draggable="true" data-id="${c.id}"`
+    : `class="c-card${c.vista?' vista':''}"`;
+
+  return `<div ${dragAttrs}>
+    <div class="c-header">
+      ${conDrag ? '<span class="drag-handle" title="Arrastrar para reordenar">⠿</span>' : ''}
+      <div class="c-nombres">
+        <div class="c-bebe-row">
+          <span class="c-bebe">${c.bebe||'—'}</span>
+          ${c.mama ? `<span class="c-mama-inline">${c.mama}</span>` : ''}
+        </div>
+        <div class="c-badges">
+          ${c.paquete ? `<span class="badge-paquete">${c.paquete}</span>` : ''}
+          ${c.tieneProductos ? '<span class="badge-prod">📦 Productos</span>' : ''}
+          ${c.tareaVideoPendiente && !c.tareaVideoHecha ? '<span class="badge-video">🎬 Video pendiente</span>' : ''}
+        </div>
+      </div>
+      ${estadoSelectHtml(idx, c.estado)}
+    </div>
+    <div class="c-body">
+      ${info ? `<div class="c-info-row">${info}</div>` : ''}
+      ${alerta60}
+      ${c.notas ? `<div class="c-notas"><div class="c-notas-label">Notas</div>${c.notas}</div>` : ''}
+    </div>
+    <div class="c-footer">
+      ${acciones}
+      <span class="sync-card" id="sync-${c.id}">${syncHtml}</span>
+    </div>
+  </div>`;
+}
+
+// ─── DRAG & DROP ──────────────────────────────────────────────
+function onDragStart(e) {
+  dragSrcId = e.currentTarget.dataset.id;
+  e.currentTarget.style.opacity = '0.5';
+}
+function onDragOver(e) {
+  e.preventDefault();
+  document.querySelectorAll('.card-edicion').forEach(el => el.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+function onDrop(e) {
+  e.preventDefault();
+  const targetId = e.currentTarget.dataset.id;
+  if (!dragSrcId || dragSrcId === targetId) return;
+  const enEdicion = getEdicionOrdenada();
+  const ids = enEdicion.map(c => c.id);
+  const srcPos = ids.indexOf(dragSrcId);
+  const tgtPos = ids.indexOf(targetId);
+  ids.splice(srcPos, 1);
+  ids.splice(tgtPos, 0, dragSrcId);
+  ordenEdicion = ids;
+  renderApp();
+}
+function onDragEnd(e) {
+  e.currentTarget.style.opacity = '';
+  document.querySelectorAll('.card-edicion').forEach(el => el.classList.remove('drag-over'));
+}
+
+// ─── SIMULACIÓN ANGIE ─────────────────────────────────────────
+const DATOS_ORIG = JSON.parse(JSON.stringify(clientes));
+
+function simAngie(accion, bebe) {
+  if (accion === 'reset') {
+    clientes = JSON.parse(JSON.stringify(DATOS_ORIG));
+    PEDIDOS_ANGIE_SIMULADOS[0].prods.forEach(p => p.estado = 'En producción');
+    PEDIDOS_ANGIE_SIMULADOS[1].prods.forEach(p => p.estado = 'Listo en estudio');
+    ordenEdicion = [];
+    renderApp(); return;
+  }
+  if (accion === 'todos_produccion' && bebe) {
+    const pedido = PEDIDOS_ANGIE_SIMULADOS.find(p => p.bebe === bebe);
+    if (pedido) { pedido.prods.forEach(p => p.estado = 'En producción'); autoSync(); renderApp(); }
+  }
+  if (accion === 'listo_estudio' && bebe) {
+    const pedido = PEDIDOS_ANGIE_SIMULADOS.find(p => p.bebe === bebe);
+    if (pedido) {
+      pedido.prods[0].estado = 'Listo en estudio';
+      const c = clientes.find(x => x.bebe === bebe);
+      if (c) { c.tareaVideoDisparada = false; c.tareaVideoPendiente = false; }
+      autoSync(); renderApp();
+    }
+  }
+}
+
+// ─── ACCIONES RÁPIDAS ─────────────────────────────────────────
+function marcarEnvioGaleria(idx) {
+  clientes[idx].estado = 'pendiente_cliente';
+  clientes[idx].fechaEnvioGaleria = hoy();
+  marcarCambio(clientes[idx].id); renderApp();
+}
+
+function abrirCF(idx) {
+  confirmandoIdx = idx;
+  const c = clientes[idx];
+  document.getElementById('cf-fecha').value = hoy();
+  document.getElementById('cf-limite').value = calcLimite(hoy(), 30);
+  document.getElementById('cf-limite60').value = calcLimite(hoy(), 60);
+  document.getElementById('cf-cant').value = (c.paquete ? fotosDelPaquete(c.paquete) : '') || '';
+  document.getElementById('modal-conf-fotos').classList.add('open');
+}
+
+function cerrarModalCF() {
+  document.getElementById('modal-conf-fotos').classList.remove('open');
+  confirmandoIdx = null;
+}
+
+function cfAutoLimite() {
+  const v = document.getElementById('cf-fecha').value;
+  if (v) {
+    document.getElementById('cf-limite').value = calcLimite(v, 30);
+    document.getElementById('cf-limite60').value = calcLimite(v, 60);
+  }
+}
+
+function confirmarFotos() {
+  if (confirmandoIdx === null) return;
+  const c = clientes[confirmandoIdx];
+  const fecha = document.getElementById('cf-fecha').value;
+  if (!fecha) { alert('Ingresá la fecha'); return; }
+  c.estado = 'edicion_renu';
+  c.fechaConfirmacion = fecha;
+  c.fechaLimite = document.getElementById('cf-limite').value || calcLimite(fecha, 30);
+  c.fechaLimite60 = document.getElementById('cf-limite60').value || calcLimite(fecha, 60);
+  const cant = document.getElementById('cf-cant').value;
+  if (cant) c.cantFotos = parseInt(cant);
+  cerrarModalCF();
+  marcarCambio(c.id); renderApp();
+}
+
+function marcarEdicionTerminada(idx) {
+  clientes[idx].estado = 'para_subir';
+  // fechaLimite ya está calculada desde fechaConfirmacion (30 días desde que eligió las fotos)
+  marcarCambio(clientes[idx].id); renderApp();
+}
+
+function marcarSubidas(idx) {
+  clientes[idx].estado = 'subidas';
+  clientes[idx].fechaSubida = hoy();
+  clientes[idx].vista = false;
+  marcarCambio(clientes[idx].id); renderApp();
+}
+
+function marcarVideo(idx) {
+  if (!confirm('¿Marcás el video como grabado?')) return;
+  clientes[idx].tareaVideoHecha = true;
+  marcarCambio(clientes[idx].id); renderApp();
+}
+
+function marcarVista(idx) {
+  clientes[idx].vista = !clientes[idx].vista;
+  renderApp();
+}
+
+function eliminarEntregada(idx) {
+  if (!confirm(`¿Eliminar a ${clientes[idx].bebe} de la lista?`)) return;
+  clientes.splice(idx, 1);
+  renderApp();
+}
+
+function toggleEntregadas() {
+  mostrarEntregadas = !mostrarEntregadas;
+  renderApp();
+}
+
+// ─── EXPORTAR / IMPORTAR ──────────────────────────────────────
+function exportarDatos() {
+  const json = JSON.stringify({ clientes, exportado: new Date().toISOString() }, null, 2);
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+  a.download = 'equipo_picabu_backup.json';
+  a.click();
+}
+
+function importarDatos(input) {
+  const f = input.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.clientes && Array.isArray(data.clientes)) {
+        clientes = data.clientes;
+        ordenEdicion = [];
+        renderApp();
+        alert('Datos importados correctamente.');
+      } else { alert('Archivo no válido.'); }
+    } catch { alert('Error al leer el archivo.'); }
+  };
+  r.readAsText(f);
+  input.value = '';
+}
+
+// ─── MODAL CLIENTE ────────────────────────────────────────────
+function sincEstadoModal() {
+  const e = document.getElementById('m-estado').value;
+  const mostrar = ['edicion_renu','para_subir','subidas'].includes(e);
+  document.getElementById('wrap-fecha-conf').style.display = mostrar ? 'block' : 'none';
+  document.getElementById('wrap-fecha-limite').style.display = mostrar ? 'block' : 'none';
+  document.getElementById('wrap-cant').style.display = mostrar ? 'block' : 'none';
+}
+
+function autoLimite() {
+  const v = document.getElementById('m-fecha-conf').value;
+  if (v) document.getElementById('m-fecha-limite').value = calcLimite(v, 30);
+}
+
+function abrirModalNuevo() {
+  editandoIdx = null;
+  document.getElementById('modal-titulo').textContent = 'Nuevo cliente';
+  document.getElementById('modal-sub').textContent = 'Completá los datos de la sesión';
+  document.getElementById('m-parser').value = '';
+  document.getElementById('m-bebe').value = '';
+  document.getElementById('m-mama').value = '';
+  document.getElementById('m-fecha-sesion').value = '';
+  document.getElementById('m-paquete').value = '';
+  document.getElementById('m-estado').value = 'galeria_pendiente';
+  document.getElementById('m-notas').value = '';
+  document.getElementById('m-cant').value = '';
+  document.getElementById('m-fecha-conf').value = '';
+  document.getElementById('m-fecha-limite').value = '';
+  document.getElementById('m-prod').value = 'no';
+  document.getElementById('fotos-hint').style.display = 'none';
+  document.getElementById('btn-elim').style.display = 'none';
+  document.getElementById('wrap-prod').style.display = 'none'; // productos solo en editar
+  sincEstadoModal();
+  document.getElementById('modal-cliente').classList.add('open');
+}
+
+function abrirModalEditar(idx) {
+  editandoIdx = idx;
+  const c = clientes[idx];
+  document.getElementById('modal-titulo').textContent = 'Editar cliente';
+  document.getElementById('modal-sub').textContent = `${c.bebe||''} — ${c.mama||''}`;
+  document.getElementById('m-parser').value = '';
+  document.getElementById('m-bebe').value = c.bebe||'';
+  document.getElementById('m-mama').value = c.mama||'';
+  document.getElementById('m-fecha-sesion').value = c.fechaSesion||'';
+  document.getElementById('m-paquete').value = c.paquete||'';
+  document.getElementById('m-estado').value = c.estado||'galeria_pendiente';
+  document.getElementById('m-notas').value = c.notas||'';
+  document.getElementById('m-cant').value = c.cantFotos||'';
+  document.getElementById('m-fecha-conf').value = c.fechaConfirmacion||'';
+  document.getElementById('m-fecha-limite').value = c.fechaLimite||'';
+  document.getElementById('m-prod').value = c.tieneProductos ? 'si' : 'no';
+  document.getElementById('wrap-prod').style.display = 'block'; // mostrar en editar
+  document.getElementById('btn-elim').style.display = 'inline-block';
+  actualizarFotosHint();
+  sincEstadoModal();
+  document.getElementById('modal-cliente').classList.add('open');
+}
+
+function cerrarModal() {
+  document.getElementById('modal-cliente').classList.remove('open');
+  editandoIdx = null;
+}
+
+function guardarCliente() {
+  const bebe = document.getElementById('m-bebe').value.trim();
+  if (!bebe) { alert('Ingresá el nombre del bebé'); return; }
+  const datos = {
+    bebe,
+    mama: document.getElementById('m-mama').value.trim(),
+    fechaSesion: document.getElementById('m-fecha-sesion').value||null,
+    paquete: document.getElementById('m-paquete').value||null,
+    estado: document.getElementById('m-estado').value,
+    notas: document.getElementById('m-notas').value.trim(),
+    cantFotos: document.getElementById('m-cant').value ? parseInt(document.getElementById('m-cant').value) : null,
+    fechaConfirmacion: document.getElementById('m-fecha-conf').value||null,
+    fechaLimite: document.getElementById('m-fecha-limite').value||null,
+    tieneProductos: document.getElementById('m-prod').value === 'si',
+  };
+  if (editandoIdx !== null) {
+    Object.assign(clientes[editandoIdx], datos);
+    marcarCambio(clientes[editandoIdx].id);
+  } else {
+    const nuevo = { id: 'r'+Date.now(), fechaCreacion: hoy(), tieneProductos: false, ...datos };
+    clientes.push(nuevo);
+    marcarCambio(nuevo.id);
+  }
+  cerrarModal();
+  renderApp();
+}
+
+function eliminarCliente() {
+  if (editandoIdx === null) return;
+  if (!confirm(`¿Eliminar a ${clientes[editandoIdx].bebe}?`)) return;
+  clientes.splice(editandoIdx, 1);
+  cerrarModal();
+  renderApp();
+}
+
+// Cerrar al clickear fuera
+document.getElementById('modal-cliente').addEventListener('click', e => { if (e.target === document.getElementById('modal-cliente')) cerrarModal(); });
+document.getElementById('modal-conf-fotos').addEventListener('click', e => { if (e.target === document.getElementById('modal-conf-fotos')) cerrarModalCF(); });
+
+// ─── TABS ─────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.textContent.trim().toLowerCase() === (name === 'diseno' ? 'diseño' : name))
+  );
+  document.querySelectorAll('.page').forEach(p =>
+    p.classList.toggle('active', p.id === 'page-'+name)
+  );
+  if (name === 'diseno') renderDiseno();
+}
+
+// Colores de estado igual que Picabú App (DEFAULT_ESTADOS)
+const ESTADOS_D = [
+  {nombre:'Pendiente datos cliente', color:'#e0c9b9'},
+  {nombre:'Pendiente diseño',        color:'#b3c6e0'},
+  {nombre:'En producción',           color:'#b3d4c8'},
+  {nombre:'Listo en estudio',        color:'#c8d4b3'},
+  {nombre:'Entregado',               color:'#d1d1d1'},
+];
+const ESTADOS_ALERTA_D = ['Pendiente datos cliente','Pendiente info','Pendiente info cliente'];
+
+function estadoStyleD(nombre) {
+  if (!nombre) return 'background:#f0efed;color:#5c5248;';
+  const e = ESTADOS_D.find(x => x.nombre === nombre);
+  const col = e ? e.color : '#f0efed';
+  const hex = col.replace('#','');
+  const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+  const lum = (0.299*r + 0.587*g + 0.114*b)/255;
+  return `background:${col};color:${lum>0.55?'#3a2e2a':'#fffcfa'};`;
+}
+
+function disenoSyncHtml() {
+  if (!_angieLastSync.ts) return `<span style="color:#ccc;font-size:10px;">☁ sincronizado</span>`;
+  return `<span style="color:#7aaa8a;font-size:10px;" title="Datos de Picabú App — ${new Date(_angieLastSync.ts).toLocaleString('es-AR')}">✓ ${_angieLastSync.tsStr}</span>`;
+}
+
+function disenoCardHtml(p, idx) {
+  const pagoClass = p.pago === 'Pagado' ? 'pago-pagado' : p.pago === 'Saldo pendiente' ? 'pago-saldo' : 'pago-vacio';
+  const pagoLabel = p.pago || 'Estado pago';
+  const prodsActivos = (p.prods || []).filter(x => x.estado !== 'Entregado');
+
+  const fichaIcon = `<svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><line x1="3.5" y1="4.5" x2="10.5" y2="4.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>`;
+
+  const prodsHtml = prodsActivos.map(x => {
+    const cantBadge = (x.cantTotal && x.cantTotal > 1 && x.cantIdx === 0)
+      ? `<span style="background:#7f6d67;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:600;flex-shrink:0;">×${x.cantTotal}</span>` : '';
+    const ntagHtml = x.numPedido
+      ? `<span class="nped-tag filled">#${x.numPedido}</span>`
+      : `<span class="nped-tag">···</span>`;
+    const estadoHtml = x.estado
+      ? `<button class="estado-btn" style="${estadoStyleD(x.estado)}">${x.estado}</button>`
+      : `<button class="estado-btn" style="background:#f0efed;color:#5c5248;">—</button>`;
+    return `<div class="prod-row">
+      <span class="prod-drag">⠿</span>
+      <button class="ficha-btn" title="Ficha del producto">${fichaIcon}</button>
+      <div class="prod-nombre">${x.nombre||''}</div>
+      ${cantBadge}
+      <div class="nota-ico">${x.nota?'📝':''}</div>
+      <div class="estado-wrap">${estadoHtml}</div>
+      ${ntagHtml}
+    </div>`;
+  }).join('') || `<div style="font-size:12px;color:var(--muted);padding:8px 0;">Sin productos activos</div>`;
+
+  return `<div class="c-card">
+    <div class="c-header">
+      <div style="flex:1;min-width:0;">
+        <div><span class="c-nombre">${p.bebe}</span><span class="c-mama">${p.mama||''}</span></div>
+        ${p.notas ? `<div class="c-meta">📌 ${p.notas}</div>` : ''}
+      </div>
+      <div class="c-right">
+        <span class="${pagoClass} pago-sel">${pagoLabel}</span>
+      </div>
+    </div>
+    <div class="c-body">${prodsHtml}</div>
+    <div class="c-footer" style="position:relative;">
+      <span id="dsync-${idx}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${disenoSyncHtml()}</span>
+    </div>
+  </div>`;
+}
+
+function renderDiseno() {
+  const el = document.getElementById('diseno-container');
+  const todos = PEDIDOS_ANGIE_SIMULADOS.filter(p => (p.prods||[]).some(x => x.estado !== 'Entregado'));
+  const listos   = todos.filter(p => p.prods.filter(x=>x.estado!=='Entregado').every(x => x.estado === 'Listo en estudio'));
+  const parciales = todos.filter(p => !listos.includes(p));
+
+  // Alertas: sin respuesta (estados de alerta)
+  const alertasSeg = {};
+  todos.forEach(p => {
+    (p.prods||[]).forEach(x => {
+      if (ESTADOS_ALERTA_D.includes(x.estado)) {
+        const k = `${p.bebe} · ${p.mama}`;
+        if (!alertasSeg[k]) alertasSeg[k] = [];
+        alertasSeg[k].push(x);
+      }
+    });
+  });
+
+  // Alertas: coordinar entrega (todos listos — igual que Picabú App)
+  const alertasEnt = {};
+  listos.forEach(p => {
+    const k = `${p.bebe} · ${p.mama}`;
+    alertasEnt[k] = { tieneSaldo: p.pago === 'Saldo pendiente' };
+  });
+
+  let html = '';
+
+  // Bandeja alertas (igual que renderDiseno de Picabú App)
+  const keysSeg = Object.keys(alertasSeg);
+  const keysEnt = Object.keys(alertasEnt);
+  if (keysSeg.length || keysEnt.length) {
+    html += `<div class="alertas-wrap">`;
+    if (keysSeg.length) {
+      html += `<div class="alert-box">
+        <div class="alert-title">Sin respuesta del cliente</div>
+        ${keysSeg.map(k=>`<div class="alert-grupo">
+          <div class="alert-cliente">${k}</div>
+          ${alertasSeg[k].map(x=>`<div class="alert-item">
+            <span class="alert-prod">${x.nombre}</span>
+            <span class="alert-badge">${x.estado}</span>
+          </div>`).join('')}
+        </div>`).join('')}
+      </div>`;
+    }
+    if (keysEnt.length) {
+      html += `<div class="alert-box">
+        <div class="alert-title">Coordinar entrega</div>
+        ${keysEnt.map(k=>`<div class="alert-grupo">
+          <div class="alert-cliente">${k}</div>
+          ${alertasEnt[k].tieneSaldo ? `<div style="font-size:11px;color:#a05050;margin-top:2px;">⚠ Saldo pendiente</div>` : ''}
+        </div>`).join('')}
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  if (listos.length) {
+    html += `<div class="seccion-header" style="margin-top:4px;">
+      <span class="seccion-titulo">Listos para retirar</span>
+      <span class="count-badge">${listos.length}</span>
+    </div>`;
+    html += listos.map((p,i) => disenoCardHtml(p, 'listo-'+i)).join('');
+  }
+
+  if (parciales.length) {
+    html += `<div class="seccion-header" style="margin-top:${listos.length ? '20px' : '4px'};">
+      <span class="seccion-titulo">En proceso</span>
+      <span class="count-badge">${parciales.length}</span>
+    </div>`;
+    html += parciales.map((p,i) => disenoCardHtml(p, 'proc-'+i)).join('');
+  }
+
+  if (!todos.length) {
+    html = '<div class="empty">No hay productos activos en este momento.</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+// Init
+autoSync();
+renderApp();
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBk0X0tN037Z2N68_Y4Bfa9e_P01horThI",
+  authDomain: "picabu-app.firebaseapp.com",
+  projectId: "picabu-app",
+  storageBucket: "picabu-app.firebasestorage.app",
+  messagingSenderId: "772235711232",
+  appId: "1:772235711232:web:4b6d60bc1b01fad55599e5"
+};
+
+const fbApp = initializeApp(firebaseConfig, 'equipo');
+const db = getFirestore(fbApp);
+
+// ── SOLO LECTURA: pedidos de Angie — nunca se escribe en este ref ──
+const REF_ANGIE = doc(db, 'picabu', 'pedidos');
+// ── LECTURA/ESCRITURA: sesiones de Renu — colección separada ──────
+const REF_RENU = doc(db, 'equipo', 'sesiones');
+
+// Escuchar pedidos de Angie (read-only) — siempre llama __angieUpdate aunque no haya datos
+onSnapshot(REF_ANGIE, snap => {
+  const d = snap.exists() ? snap.data() : {};
+  console.log('[Equipo] picabu/pedidos recibido:', snap.exists(), 'lista:', d.lista?.length ?? 'sin lista');
+  if (typeof window.__angieUpdate === 'function') window.__angieUpdate(d.lista || [], d.updated || null);
+}, err => {
+  console.error('[Equipo] Error leyendo picabu/pedidos:', err.code, err.message);
+});
+
+// Escuchar sesiones de Renu
+onSnapshot(REF_RENU, snap => {
+  if (snap.exists() && snap.data()?.lista) {
+    if (typeof window.__renuLoad === 'function') window.__renuLoad(snap.data().lista);
+  }
+}, err => {
+  console.warn('Firebase Renu:', err);
+});
+
+// Guardar sesiones de Renu (llamado desde marcarCambio)
+window.__renuSave = async function(data) {
+  const clean = JSON.parse(JSON.stringify(data, (k, v) => v === undefined ? null : v));
+  await setDoc(REF_RENU, { lista: clean, updated: new Date().toISOString() });
+};
+</script>
+</body>
+</html>
