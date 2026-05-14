@@ -988,15 +988,30 @@ function marcarSubidas(idx) {
   marcarCambio(clientes[idx].id); renderApp();
 }
 
+function _matchPedido(c) {
+  const _nb = s => (s||'').toLowerCase().trim();
+  return PEDIDOS_ANGIE_SIMULADOS.find(p => {
+    const pb = _nb(p.bebe), cb = _nb(c.bebe);
+    const bebeOk = pb === cb || cb.startsWith(pb+' ') || pb.startsWith(cb+' ');
+    return p.bebe && bebeOk && p.mama && _nb(p.mama) === _nb(c.mama);
+  });
+}
+
 function marcarVideo(idx) {
   clientes[idx].tareaVideoHecho = true;
-  marcarCambio(clientes[idx].id); renderApp();
+  marcarCambio(clientes[idx].id);
+  const pedido = _matchPedido(clientes[idx]);
+  if (pedido) { pedido.videoHecho = true; if (typeof window.__angieSave === 'function') window.__angieSave(PEDIDOS_ANGIE_SIMULADOS); }
+  renderApp();
 }
 
 function deshacerVideo(idx) {
   clientes[idx].tareaVideoHecho = false;
   clientes[idx].tareaVideoDisparada = false;
-  marcarCambio(clientes[idx].id); renderApp();
+  marcarCambio(clientes[idx].id);
+  const pedido = _matchPedido(clientes[idx]);
+  if (pedido) { pedido.videoHecho = false; if (typeof window.__angieSave === 'function') window.__angieSave(PEDIDOS_ANGIE_SIMULADOS); }
+  renderApp();
 }
 
 function marcarVista(idx) {
