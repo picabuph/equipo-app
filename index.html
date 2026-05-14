@@ -989,7 +989,6 @@ function marcarSubidas(idx) {
 }
 
 function marcarVideo(idx) {
-  if (!confirm('¿Marcás el video como grabado?')) return;
   clientes[idx].tareaVideoHecho = true;
   marcarCambio(clientes[idx].id); renderApp();
 }
