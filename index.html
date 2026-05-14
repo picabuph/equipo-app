@@ -1282,6 +1282,121 @@ function cerrarFichaDiseno() {
   document.getElementById('modal-ficha-d').style.display = 'none';
 }
 
+// ─── RENDER CONFIG ────────────────────────────────────────────
+function renderConfig() {
+  const cfg = getConfig();
+  const paqRows = Object.entries(Object.assign({}, PAQUETES, cfg.paquetes)).map(([nombre, fotos]) =>
+    `<tr><td style="text-transform:capitalize">${nombre}</td><td><input class="config-paq-input" data-paq="${nombre}" type="number" value="${fotos}" min="1" max="200"></td></tr>`
+  ).join('');
+  document.getElementById('config-container').innerHTML = `
+    <div style="padding-bottom:40px;">
+      <div class="config-section">
+        <div class="config-section-title">Alertas y plazos</div>
+        <div class="config-row">
+          <div class="config-label">Días sin respuesta del cliente
+            <small>Alerta en "Pendiente cliente" si pasan más de estos días</small></div>
+          <input class="config-input" id="cfg-alerta" type="number" value="${cfg.diasAlertaSinRespuesta}" min="1" max="60">
+        </div>
+        <div class="config-row">
+          <div class="config-label">Límite de edición (días)
+            <small>Contados desde que el cliente confirma fotos</small></div>
+          <input class="config-input" id="cfg-edicion" type="number" value="${cfg.diasLimiteEdicion}" min="1" max="90">
+        </div>
+        <div class="config-row">
+          <div class="config-label">Tope video/productos (días)
+            <small>Alerta de 60 días para video pendiente</small></div>
+          <input class="config-input" id="cfg-video" type="number" value="${cfg.diasLimiteVideo}" min="1" max="120">
+        </div>
+        <div class="config-row">
+          <div class="config-label">Días estimados para galería
+            <small>Desde la sesión hasta que Renu envía la galería</small></div>
+          <input class="config-input" id="cfg-galeria" type="number" value="${cfg.diasEstimadoGaleria}" min="1" max="60">
+        </div>
+      </div>
+      <div class="config-section">
+        <div class="config-section-title">Fotos por paquete</div>
+        <table class="config-paq-table">${paqRows}</table>
+      </div>
+      <button class="btn-config-save" onclick="guardarConfig()">Guardar configuración</button>
+    </div>`;
+}
+
+function guardarConfig() {
+  const paquetes = {};
+  document.querySelectorAll('.config-paq-input').forEach(inp => {
+    paquetes[inp.dataset.paq] = parseInt(inp.value) || 0;
+  });
+  const cfg = {
+    diasAlertaSinRespuesta: parseInt(document.getElementById('cfg-alerta').value) || 15,
+    diasLimiteEdicion: parseInt(document.getElementById('cfg-edicion').value) || 30,
+    diasLimiteVideo: parseInt(document.getElementById('cfg-video').value) || 60,
+    diasEstimadoGaleria: parseInt(document.getElementById('cfg-galeria').value) || 7,
+    paquetes
+  };
+  saveConfig(cfg);
+  const btn = document.querySelector('.btn-config-save');
+  btn.textContent = '✓ Guardado';
+  setTimeout(() => { btn.textContent = 'Guardar configuración'; }, 2000);
+  renderApp();
+}
+
+// ─── RENDER STATS ─────────────────────────────────────────────
+function renderStats() {
+  function diffDias(f1, f2) {
+    if (!f1 || !f2) return null;
+    return Math.round((new Date(f2) - new Date(f1)) / 86400000);
+  }
+  function avg(arr) { return arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null; }
+  function minV(arr) { return arr.length ? Math.min(...arr) : null; }
+  function maxV(arr) { return arr.length ? Math.max(...arr) : null; }
+
+  const todos = clientes.filter(c => c.fechaSubida);
+  const d_sesGal  = todos.map(c => diffDias(c.fechaSesion, c.fechaEnvioGaleria)).filter(d => d !== null && d >= 0);
+  const d_galConf = todos.map(c => diffDias(c.fechaEnvioGaleria, c.fechaConfirmacion)).filter(d => d !== null && d >= 0);
+  const d_confSub = todos.map(c => diffDias(c.fechaConfirmacion, c.fechaSubida)).filter(d => d !== null && d >= 0);
+  const d_total   = todos.map(c => diffDias(c.fechaSesion, c.fechaSubida)).filter(d => d !== null && d >= 0);
+
+  function statCard(label, arr, n) {
+    const a = avg(arr);
+    if (a === null) return '';
+    return `<div class="stat-card">
+      <div class="stat-card-label">${label}</div>
+      <div class="stat-card-value">${a}d</div>
+      <div class="stat-card-sub">${n} sesiones · mín ${minV(arr)}d · máx ${maxV(arr)}d</div>
+    </div>`;
+  }
+
+  const rows = todos.filter(c => c.fechaSesion && c.fechaSubida).map(c => {
+    const d1 = diffDias(c.fechaSesion, c.fechaEnvioGaleria);
+    const d2 = diffDias(c.fechaEnvioGaleria, c.fechaConfirmacion);
+    const d3 = diffDias(c.fechaConfirmacion, c.fechaSubida);
+    const dt = diffDias(c.fechaSesion, c.fechaSubida);
+    return `<tr>
+      <td><strong>${c.bebe||'—'}</strong> <span style="color:var(--muted);font-size:11px">${c.mama||''}</span></td>
+      <td>${d1 !== null ? d1+'d' : '—'}</td>
+      <td>${d2 !== null ? d2+'d' : '—'}</td>
+      <td>${d3 !== null ? d3+'d' : '—'}</td>
+      <td><strong>${dt !== null ? dt+'d' : '—'}</strong></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('stats-container').innerHTML = todos.length === 0
+    ? '<div class="empty">Todavía no hay sesiones completadas para mostrar estadísticas.</div>'
+    : `<div style="padding-bottom:40px;">
+        <div class="stats-grid">
+          ${statCard('Sesión → Galería', d_sesGal, d_sesGal.length)}
+          ${statCard('Galería → Cliente eligió', d_galConf, d_galConf.length)}
+          ${statCard('Confirmación → Entregado', d_confSub, d_confSub.length)}
+          ${statCard('Total sesión → Entregado', d_total, d_total.length)}
+        </div>
+        ${rows ? `<table class="stats-table">
+          <thead><tr><th>Cliente</th><th>Ses→Gal</th><th>Gal→Conf</th><th>Conf→Sub</th><th>Total</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>` : ''}
+      </div>`;
+}
+
+
 function renderDiseno() {
   const el = document.getElementById('diseno-container');
   const todos = PEDIDOS_ANGIE_SIMULADOS.filter(p => (p.prods||[]).some(x => x.estado !== 'Entregado'));
