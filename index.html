@@ -185,6 +185,22 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 #page-diseno .estado-opt:hover { background:var(--arena-l); }
 #page-diseno .estado-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 #page-diseno .estado-empty-btn { font-size:10px; color:var(--muted); padding:4px 10px; border-radius:20px; border:1px dashed var(--border); background:none; cursor:pointer; white-space:nowrap; font-family:'Montserrat',sans-serif; }
+/* ── Config & Stats ───────────────────────────────────── */
+.config-section { background:var(--white); border:1px solid var(--border); border-radius:14px; padding:20px 22px; margin-bottom:16px; }
+.config-section-title { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:14px; }
+.config-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--arena-l); }
+.config-row:last-child { border-bottom:none; padding-bottom:0; }
+.config-row:first-of-type { padding-top:0; }
+.config-label { font-size:13px; color:var(--text); font-weight:400; }
+.config-label small { display:block; font-size:10px; color:var(--muted); margin-top:2px; letter-spacing:0.3px; }
+.config-val { width:72px; padding:7px 11px; border:1px solid var(--border); border-radius:9px; font-size:13px; font-family:'Montserrat',sans-serif; color:var(--text); background:var(--bg); text-align:center; outline:none; }
+.config-val:focus { border-color:var(--marron); }
+.config-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:4px; }
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; margin-bottom:16px; }
+.stats-card { background:var(--white); border:1px solid var(--border); border-radius:14px; padding:18px 16px; text-align:center; }
+.stats-card .stats-num { font-size:28px; font-weight:600; color:var(--marron-d); line-height:1; margin-bottom:6px; }
+.stats-card .stats-lbl { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); }
+.stats-section-title { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; margin:18px 0 10px; }
 </style>
 <script>
 (function(){
@@ -831,6 +847,8 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
       acciones += `<button class="btn-accion btn-accion-pri" onclick="marcarSubidas(${idx})">✓ Fotos subidas</button>`;
     if (c.tareaVideoPendiente && !c.tareaVideoHecho)
       acciones += ` <button class="btn-accion btn-accion-video" onclick="marcarVideo(${idx})">🎬 Video grabado</button>`;
+    if (c.tareaVideoPendiente && c.tareaVideoHecho)
+      acciones += ` <button class="btn-accion" style="font-size:10px;opacity:0.6" onclick="deshacerVideo(${idx})" title="Deshacer">↩ Deshacer video</button>`;
   } else {
     acciones += `<button class="btn-accion" onclick="marcarVista(${idx})">${c.vista ? '✓ Vista' : 'Marcar vista'}</button>`;
     acciones += `<button class="btn-accion btn-accion-del" onclick="eliminarEntregada(${idx})">Eliminar</button>`;
@@ -958,6 +976,12 @@ function marcarSubidas(idx) {
 function marcarVideo(idx) {
   if (!confirm('¿Marcás el video como grabado?')) return;
   clientes[idx].tareaVideoHecho = true;
+  marcarCambio(clientes[idx].id); renderApp();
+}
+
+function deshacerVideo(idx) {
+  clientes[idx].tareaVideoHecho = false;
+  clientes[idx].tareaVideoDisparada = false;
   marcarCambio(clientes[idx].id); renderApp();
 }
 
