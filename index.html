@@ -119,11 +119,6 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 
 .seccion-sep { height:1px; background:var(--border); margin:16px 0 14px; }
 
-.sim-banner { background:var(--arena-l); border:1px solid var(--arena); border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:var(--marron); }
-.sim-banner strong { font-weight:600; }
-.sim-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-.sim-btn { padding:5px 11px; border-radius:7px; font-size:10px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; font-family:'Montserrat',sans-serif; font-weight:500; border:1px solid var(--arena-d); background:var(--white); color:var(--marron-d); }
-.sim-btn:hover { background:var(--arena); }
 
 /* TABS */
 .tabs-bar { background:var(--marron); display:flex; padding:0 16px; }
@@ -222,6 +217,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 <div class="tabs-bar">
   <button class="tab-btn active" onclick="showTab('sesiones')">Sesiones</button>
   <button class="tab-btn" onclick="showTab('diseno')">Diseño</button>
+  <button class="tab-btn" onclick="showTab('stats')">Estadísticas</button>
+  <button class="tab-btn" onclick="showTab('config')">Configuración</button>
 </div>
 
 <div id="sync-bandeja"></div>
@@ -231,6 +228,14 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 </div>
 <div class="page" id="page-diseno">
   <div class="container" id="diseno-container"></div>
+</div>
+
+<div class="page" id="page-stats">
+  <div class="container" id="stats-container"></div>
+</div>
+
+<div class="page" id="page-config">
+  <div class="container" id="config-container"></div>
 </div>
 
 <button class="fab" onclick="abrirModalNuevo()" title="Agregar cliente">+</button>
@@ -343,6 +348,27 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 </div>
 
 <script>
+
+// ─── CONFIGURACIÓN ────────────────────────────────────────────
+const CONFIG_KEY = 'equipo_config';
+const CONFIG_DEFAULT = {
+  diasAlertaSinRespuesta: 15,
+  diasLimiteEdicion: 30,
+  diasLimiteVideo: 60,
+  diasEstimadoGaleria: 7,
+  paquetes: {
+    'petite familiar': 15, 'premium familia': 25,
+    'petite lifestyle': 25, 'premium lifestyle': 50,
+    'petite': 10, 'premium': 20, 'gold': 30
+  }
+};
+function getConfig() {
+  try { return Object.assign({}, CONFIG_DEFAULT, JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}')); }
+  catch(e) { return Object.assign({}, CONFIG_DEFAULT); }
+}
+function saveConfig(cfg) {
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+}
 // ─── PAQUETES ─────────────────────────────────────────────────
 const PAQUETES = {
   'petite familiar': 15, 'premium familia': 25,
@@ -353,8 +379,9 @@ const PAQUETES = {
 function fotosDelPaquete(paq) {
   if (!paq) return null;
   const k = paq.toLowerCase().trim();
-  for (const nombre of Object.keys(PAQUETES)) {
-    if (k.includes(nombre)) return PAQUETES[nombre];
+  const paquetes = Object.assign({}, PAQUETES, getConfig().paquetes);
+  for (const nombre of Object.keys(paquetes)) {
+    if (k.includes(nombre)) return paquetes[nombre];
   }
   return null;
 }
@@ -626,13 +653,13 @@ function renderApp() {
   const app = document.getElementById('app');
 
   const alertas15 = clientes.filter(c =>
-    c.estado === 'pendiente_cliente' && c.fechaEnvioGaleria && diasDesde(c.fechaEnvioGaleria) >= 15
+    c.estado === 'pendiente_cliente' && c.fechaEnvioGaleria && diasDesde(c.fechaEnvioGaleria) >= getConfig().diasAlertaSinRespuesta
   );
   const preEdicion = sortPorFechaSesion(clientes.filter(c => ['galeria_pendiente','pendiente_cliente'].includes(c.estado)));
   const enEdicion = getEdicionOrdenada();
   const paraSubir = sortPorFechaSesion(clientes.filter(c => c.estado === 'para_subir'));
-  const videoPendiente = clientes.filter(c => c.estado === 'subidas' && c.tareaVideoPendiente && !c.tareaVideoHecha);
-  const terminados = clientes.filter(c => c.estado === 'subidas' && !(c.tareaVideoPendiente && !c.tareaVideoHecha));
+  const videoPendiente = clientes.filter(c => c.estado === 'subidas' && c.tareaVideoPendiente && !c.tareaVideoHecho);
+  const terminados = clientes.filter(c => c.estado === 'subidas' && !(c.tareaVideoPendiente && !c.tareaVideoHecho));
 
   let html = '';
 
@@ -642,7 +669,7 @@ function renderApp() {
 
   if (alertas15.length > 0) {
     html += `<div class="alerta-15">
-      <div class="alerta-15-titulo">⚠ Sin respuesta — más de 15 días</div>
+      <div class="alerta-15-titulo">⚠ Sin respuesta — más de ${getConfig().diasAlertaSinRespuesta} días</div>
       ${alertas15.map(c => `<div class="alerta-15-item">${c.bebe} (${c.mama}) — ${diasDesde(c.fechaEnvioGaleria)} días sin respuesta</div>`).join('')}
     </div>`;
   }
@@ -676,7 +703,7 @@ function renderApp() {
       <div class="seccion-titulo">🎬 Video pendiente</div>
       <span class="count-badge">${videoPendiente.length}</span>
     </div>`;
-    videoPendiente.forEach(c => { html += renderCard(c, clientes.indexOf(c), true); });
+    videoPendiente.forEach(c => { html += renderCard(c, clientes.indexOf(c), false); });
   }
 
   if (terminados.length > 0) {
@@ -739,6 +766,15 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
         <span class="c-info-val fotos-base">${fotosBase} fotos</span>
       </div>`;
     }
+    if (c.estado === 'galeria_pendiente' && c.fechaSesion) {
+      const estFecha = calcLimite(c.fechaSesion, getConfig().diasEstimadoGaleria);
+      const estDias = diasHasta(estFecha);
+      const estCol = estDias < 0 ? '#c94040' : estDias <= 2 ? '#e0a030' : '#5cad80';
+      info += `<div class="c-info-item">
+        <span class="c-info-label">Entrega estimada galería</span>
+        <span class="c-info-val" style="color:${estCol}">${fmt(estFecha)}${estDias < 0 ? ' <span style="font-size:10px">(atrasada)</span>' : estDias === 0 ? ' <span style="font-size:10px">(hoy)</span>' : ''}</span>
+      </div>`;
+    }
   } else if (c.cantFotos) {
     let fotosLabel = `${c.cantFotos} fotos`;
     if (fotosExtras > 0) fotosLabel += ` (${fotosBase} + ${fotosExtras} extra)`;
@@ -750,7 +786,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
 
   // Fecha límite: 30 días desde selección (edicion + para_subir)
   if (c.fechaLimite && ['edicion_renu','para_subir'].includes(c.estado)) {
-    const bw = Math.max(0, Math.min(100, 100 - (diasR/30*100)));
+    const bw = Math.max(0, Math.min(100, 100 - (diasR/getConfig().diasLimiteEdicion*100)));
     const bc = diasR <= 5 ? '#e05050' : diasR <= 10 ? '#e0a030' : '#5cad80';
     const label = c.estado === 'edicion_renu' ? 'Límite edición' : 'Límite para subir';
     info += `<div class="c-info-item">
@@ -765,7 +801,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
 
   // Alerta 60 días video
   let alerta60 = '';
-  if (c.fechaLimite60 && c.tareaVideoPendiente && !c.tareaVideoHecha) {
+  if (c.fechaLimite60 && c.tareaVideoPendiente && !c.tareaVideoHecho) {
     const d60 = diasHasta(c.fechaLimite60);
     const col60 = d60 <= 10 ? '#c94040' : d60 <= 20 ? '#9a5000' : '#7a3a00';
     alerta60 = `<div class="alerta-60">
@@ -793,7 +829,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
       acciones += `<button class="btn-accion btn-accion-pri" onclick="marcarEdicionTerminada(${idx})">✓ Edición terminada</button>`;
     if (c.estado === 'para_subir')
       acciones += `<button class="btn-accion btn-accion-pri" onclick="marcarSubidas(${idx})">✓ Fotos subidas</button>`;
-    if (c.tareaVideoPendiente && !c.tareaVideoHecha)
+    if (c.tareaVideoPendiente && !c.tareaVideoHecho)
       acciones += ` <button class="btn-accion btn-accion-video" onclick="marcarVideo(${idx})">🎬 Video grabado</button>`;
   } else {
     acciones += `<button class="btn-accion" onclick="marcarVista(${idx})">${c.vista ? '✓ Vista' : 'Marcar vista'}</button>`;
@@ -815,7 +851,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
         <div class="c-badges">
           ${c.paquete ? `<span class="badge-paquete">${c.paquete}</span>` : ''}
           ${c.tieneProductos ? '<span class="badge-prod">📦 Productos</span>' : ''}
-          ${c.tareaVideoPendiente && !c.tareaVideoHecha ? '<span class="badge-video">🎬 Video pendiente</span>' : ''}
+          ${c.tareaVideoPendiente && !c.tareaVideoHecho ? '<span class="badge-video">🎬 Video pendiente</span>' : ''}
         </div>
       </div>
       ${estadoSelectHtml(idx, c.estado)}
@@ -860,31 +896,6 @@ function onDragEnd(e) {
   document.querySelectorAll('.card-edicion').forEach(el => el.classList.remove('drag-over'));
 }
 
-// ─── SIMULACIÓN ANGIE ─────────────────────────────────────────
-const DATOS_ORIG = JSON.parse(JSON.stringify(clientes));
-
-function simAngie(accion, bebe) {
-  if (accion === 'reset') {
-    clientes = JSON.parse(JSON.stringify(DATOS_ORIG));
-    PEDIDOS_ANGIE_SIMULADOS[0].prods.forEach(p => p.estado = 'En producción');
-    PEDIDOS_ANGIE_SIMULADOS[1].prods.forEach(p => p.estado = 'Listo en estudio');
-    ordenEdicion = [];
-    renderApp(); return;
-  }
-  if (accion === 'todos_produccion' && bebe) {
-    const pedido = PEDIDOS_ANGIE_SIMULADOS.find(p => p.bebe === bebe);
-    if (pedido) { pedido.prods.forEach(p => p.estado = 'En producción'); autoSync(); renderApp(); }
-  }
-  if (accion === 'listo_estudio' && bebe) {
-    const pedido = PEDIDOS_ANGIE_SIMULADOS.find(p => p.bebe === bebe);
-    if (pedido) {
-      pedido.prods[0].estado = 'Listo en estudio';
-      const c = clientes.find(x => x.bebe === bebe);
-      if (c) { c.tareaVideoDisparada = false; c.tareaVideoPendiente = false; }
-      autoSync(); renderApp();
-    }
-  }
-}
 
 // ─── ACCIONES RÁPIDAS ─────────────────────────────────────────
 function marcarEnvioGaleria(idx) {
@@ -897,8 +908,8 @@ function abrirCF(idx) {
   confirmandoIdx = idx;
   const c = clientes[idx];
   document.getElementById('cf-fecha').value = hoy();
-  document.getElementById('cf-limite').value = calcLimite(hoy(), 30);
-  document.getElementById('cf-limite60').value = calcLimite(hoy(), 60);
+  document.getElementById('cf-limite').value = calcLimite(hoy(), getConfig().diasLimiteEdicion);
+  document.getElementById('cf-limite60').value = calcLimite(hoy(), getConfig().diasLimiteVideo);
   document.getElementById('cf-cant').value = (c.paquete ? fotosDelPaquete(c.paquete) : '') || '';
   document.getElementById('modal-conf-fotos').classList.add('open');
 }
@@ -946,7 +957,7 @@ function marcarSubidas(idx) {
 
 function marcarVideo(idx) {
   if (!confirm('¿Marcás el video como grabado?')) return;
-  clientes[idx].tareaVideoHecha = true;
+  clientes[idx].tareaVideoHecho = true;
   marcarCambio(clientes[idx].id); renderApp();
 }
 
@@ -1098,13 +1109,16 @@ document.getElementById('modal-conf-fotos').addEventListener('click', e => { if 
 
 // ─── TABS ─────────────────────────────────────────────────────
 function showTab(name) {
+  const labels = { sesiones:'sesiones', diseno:'diseño', stats:'estadísticas', config:'configuración' };
   document.querySelectorAll('.tab-btn').forEach(b =>
-    b.classList.toggle('active', b.textContent.trim().toLowerCase() === (name === 'diseno' ? 'diseño' : name))
+    b.classList.toggle('active', b.textContent.trim().toLowerCase() === (labels[name]||name))
   );
   document.querySelectorAll('.page').forEach(p =>
     p.classList.toggle('active', p.id === 'page-'+name)
   );
   if (name === 'diseno') renderDiseno();
+  if (name === 'stats') renderStats();
+  if (name === 'config') renderConfig();
 }
 
 // Colores de estado igual que Picabú App (DEFAULT_ESTADOS)
