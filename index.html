@@ -89,6 +89,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .btn-accion-pri { background:var(--marron-d); color:var(--rosa-l); border-color:var(--marron-d); }
 .btn-accion-pri:hover { background:var(--marron); }
 .btn-accion-video { background:#e8d4f5; color:#5a2a7a; border-color:#d4b3e8; }
+.btn-accion-video-off { background:none; color:var(--muted); border-color:var(--border); }
+.btn-accion-video-done { background:#d4f0e0; color:#2a6a47; border-color:#a8dbbf; }
 .btn-accion-del { background:none; border:1px solid #c97b7b; color:#c97b7b; }
 .btn-accion-del:hover { background:#fde8e8; }
 .sync-card { position:absolute; bottom:8px; right:12px; display:flex; align-items:center; gap:3px; }
@@ -606,6 +608,9 @@ function autoSync() {
       if (hayListo && !c.tareaVideoDisparada) {
         c.tareaVideoPendiente = true; c.tareaVideoDisparada = true; changed = true;
       }
+      // "Sin video" marcado por Angie en la Picabú app
+      if (pedido.sinVideo && !c.sinVideo) { c.sinVideo = true; changed = true; }
+      if (!pedido.sinVideo && c.sinVideo) { c.sinVideo = false; changed = true; }
       // Suma fotos extra de pedidos de Angie
       const extras = pedido.prods.reduce((acc, p) => {
         const m = p.nombre && p.nombre.match(/(\d+)\s*foto[s]?\s*extra/i);
@@ -674,8 +679,8 @@ function renderApp() {
   const preEdicion = sortPorFechaSesion(clientes.filter(c => ['galeria_pendiente','pendiente_cliente'].includes(c.estado)));
   const enEdicion = getEdicionOrdenada();
   const paraSubir = sortPorFechaSesion(clientes.filter(c => c.estado === 'para_subir'));
-  const videoPendiente = clientes.filter(c => c.estado === 'subidas' && c.tareaVideoPendiente && !c.tareaVideoHecho);
-  const terminados = clientes.filter(c => c.estado === 'subidas' && !(c.tareaVideoPendiente && !c.tareaVideoHecho));
+  const videoPendiente = clientes.filter(c => c.estado === 'subidas' && c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo);
+  const terminados = clientes.filter(c => c.estado === 'subidas' && !(c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo));
 
   let html = '';
 
@@ -845,14 +850,22 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
       acciones += `<button class="btn-accion btn-accion-pri" onclick="marcarEdicionTerminada(${idx})">✓ Edición terminada</button>`;
     if (c.estado === 'para_subir')
       acciones += `<button class="btn-accion btn-accion-pri" onclick="marcarSubidas(${idx})">✓ Fotos subidas</button>`;
-    if (c.tareaVideoPendiente && !c.tareaVideoHecho)
-      acciones += ` <button class="btn-accion btn-accion-video" onclick="marcarVideo(${idx})">🎬 Video grabado</button>`;
-    if (c.tareaVideoPendiente && c.tareaVideoHecho)
-      acciones += ` <button class="btn-accion" style="font-size:10px;opacity:0.6" onclick="deshacerVideo(${idx})" title="Deshacer">↩ Deshacer video</button>`;
   } else {
     acciones += `<button class="btn-accion" onclick="marcarVista(${idx})">${c.vista ? '✓ Vista' : 'Marcar vista'}</button>`;
     acciones += `<button class="btn-accion btn-accion-del" onclick="eliminarEntregada(${idx})">Eliminar</button>`;
   }
+  // Botones de video — siempre visibles cuando hay tarea de video, sin importar modo compacto
+  if (c.tareaVideoPendiente && !c.sinVideo) {
+    const btnPend = c.tareaVideoHecho
+      ? `<button class="btn-accion btn-accion-video-off" onclick="deshacerVideo(${idx})" title="Volver a pendiente">🎬 Video pendiente</button>`
+      : `<button class="btn-accion btn-accion-video" style="cursor:default;opacity:0.7" disabled>🎬 Video pendiente</button>`;
+    const btnHecho = c.tareaVideoHecho
+      ? `<button class="btn-accion btn-accion-video-done" style="cursor:default;opacity:0.7" disabled>✓ Video hecho</button>`
+      : `<button class="btn-accion btn-accion-video-done" onclick="marcarVideo(${idx})">✓ Video hecho</button>`;
+    acciones += ` ${btnPend} ${btnHecho}`;
+  }
+  if (c.sinVideo)
+    acciones += ` <span style="font-size:10px;color:var(--muted);letter-spacing:0.5px;">— Sin video</span>`;
 
   const dragAttrs = conDrag
     ? `class="c-card card-edicion" draggable="true" data-id="${c.id}"`
@@ -869,7 +882,9 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
         <div class="c-badges">
           ${c.paquete ? `<span class="badge-paquete">${c.paquete}</span>` : ''}
           ${c.tieneProductos ? '<span class="badge-prod">📦 Productos</span>' : ''}
-          ${c.tareaVideoPendiente && !c.tareaVideoHecho ? '<span class="badge-video">🎬 Video pendiente</span>' : ''}
+          ${c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo ? '<span class="badge-video">🎬 Video pendiente</span>' : ''}
+          ${c.tareaVideoPendiente && c.tareaVideoHecho ? '<span class="badge-video" style="background:#d4f0e0;color:#2a6a47;">✓ Video hecho</span>' : ''}
+          ${c.sinVideo ? '<span class="badge-video" style="background:var(--arena-l);color:var(--muted);">— Sin video</span>' : ''}
         </div>
       </div>
       ${estadoSelectHtml(idx, c.estado)}
