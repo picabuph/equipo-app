@@ -64,6 +64,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .sel-galeria { background:#e8dad2; color:#5a4a42; }
 .sel-pendiente-c { background:#b3c6e0; color:#1a3a5c; }
 .sel-edicion { background:#d4b3d7; color:#3a1a4a; }
+.sel-edicion-terminada { background:#c4a0c7; color:#2a0a3a; }
 .sel-para-subir { background:#f0c84a; color:#5a4400; }
 .sel-subidas { background:#d4edda; color:#1a5c2a; }
 
@@ -83,7 +84,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .fecha-barra { height:3px; border-radius:2px; background:var(--border); margin-top:5px; overflow:hidden; }
 .fecha-barra-fill { height:100%; border-radius:2px; transition:width 0.3s; }
 
-.c-footer { display:flex; align-items:center; gap:8px; flex-wrap:wrap; border-top:1px solid var(--border); padding:7px 12px; position:relative; }
+.c-footer { display:flex; align-items:center; gap:8px; flex-wrap:wrap; border-top:1px solid var(--border); padding:7px 12px; }
 .btn-accion { padding:5px 12px; border-radius:7px; font-size:10px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; font-family:'Montserrat',sans-serif; font-weight:500; border:1px solid var(--border); background:none; color:var(--marron); }
 .btn-accion:hover { background:var(--arena-l); }
 .btn-accion-pri { background:var(--marron-d); color:var(--rosa-l); border-color:var(--marron-d); }
@@ -93,7 +94,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .btn-accion-video-done { background:#d4f0e0; color:#2a6a47; border-color:#a8dbbf; }
 .btn-accion-del { background:none; border:1px solid #c97b7b; color:#c97b7b; }
 .btn-accion-del:hover { background:#fde8e8; }
-.sync-card { position:absolute; bottom:8px; right:12px; display:flex; align-items:center; gap:3px; }
+.sync-card { margin-left:auto; display:flex; align-items:center; gap:3px; flex-shrink:0; }
 
 /* FAB */
 .fab { position:fixed; bottom:24px; right:20px; width:52px; height:52px; background:var(--marron-d); color:var(--rosa-l); border:none; border-radius:50%; font-size:26px; cursor:pointer; box-shadow:0 4px 16px rgba(74,58,53,0.4); display:flex; align-items:center; justify-content:center; z-index:100; }
@@ -234,12 +235,58 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 
 <div class="tabs-bar">
   <button class="tab-btn active" onclick="showTab('sesiones')">Sesiones</button>
+  <button class="tab-btn" onclick="showTab('carga')">+ Carga</button>
   <button class="tab-btn" onclick="showTab('diseno')">Diseño</button>
   <button class="tab-btn" onclick="showTab('stats')">Estadísticas</button>
   <button class="tab-btn" onclick="showTab('config')">Configuración</button>
 </div>
 
 <div id="sync-bandeja"></div>
+
+<div class="page" id="page-carga">
+  <div class="container" style="max-width:520px;">
+    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:16px;">Carga de sesiones</div>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:20px 22px;" id="carga-form">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="fl" style="grid-column:1/3">
+          <label>Nombre del bebé / tipo de sesión</label>
+          <input type="text" id="lote-bebe" placeholder="Ej: Valentina NB" autocomplete="off">
+        </div>
+        <div class="fl">
+          <label>Nombre de la mamá</label>
+          <input type="text" id="lote-mama" placeholder="Ej: Laura García" autocomplete="off">
+        </div>
+        <div class="fl">
+          <label>Fecha de sesión</label>
+          <input type="date" id="lote-fecha">
+        </div>
+        <div class="fl">
+          <label>Paquete</label>
+          <select id="lote-paquete">
+            <option value="">— sin especificar —</option>
+            <option value="petite">Petite (10 fotos)</option>
+            <option value="premium">Premium (20 fotos)</option>
+            <option value="gold">Gold (30 fotos)</option>
+            <option value="petite familiar">Petite Familiar (15 fotos)</option>
+            <option value="premium familia">Premium Familia (25 fotos)</option>
+            <option value="petite lifestyle">Petite Lifestyle (25 fotos)</option>
+            <option value="premium lifestyle">Premium Lifestyle (50 fotos)</option>
+            <option value="video backstage">Video de backstage</option>
+          </select>
+        </div>
+        <div class="fl">
+          <label>Notas (opcional)</label>
+          <input type="text" id="lote-notas" placeholder="Ej: cliente VIP, doble sesión...">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;align-items:center;">
+        <span id="lote-ok" style="font-size:11px;color:#7aaa8a;display:none;">✓ Guardado</span>
+        <button class="btn-pri" onclick="guardarLote()">Guardar y cargar otro</button>
+      </div>
+    </div>
+    <div style="margin-top:24px;" id="lote-lista"></div>
+  </div>
+</div>
 
 <div class="page active" id="page-sesiones">
   <div class="container" id="app"></div>
@@ -293,6 +340,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
         <option value="premium familia">Premium Familia (25 fotos)</option>
         <option value="petite lifestyle">Petite Lifestyle (25 fotos)</option>
         <option value="premium lifestyle">Premium Lifestyle (50 fotos)</option>
+        <option value="video backstage">Video de backstage</option>
       </select>
       <div class="fotos-base-hint" id="fotos-hint" style="display:none"></div>
     </div>
@@ -302,6 +350,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
         <option value="galeria_pendiente">Galería pendiente</option>
         <option value="pendiente_cliente">Pendiente cliente</option>
         <option value="edicion_renu">Edición</option>
+        <option value="edicion_terminada">Edición terminada</option>
         <option value="para_subir">Para subir</option>
         <option value="subidas">Subidas</option>
       </select>
@@ -603,7 +652,7 @@ function autoSync() {
     if (pedido.prods && pedido.prods.length > 0) {
       const todosEnProd = pedido.prods.every(p => p.estado === 'En producción');
       if (todosEnProd && c.estado === 'edicion_renu') { c.estado = 'para_subir'; changed = true; }
-      const hayListo = pedido.prods.filter(p => p.estado !== 'Entregado').length > 0 &&
+const hayListo = pedido.prods.filter(p => p.estado !== 'Entregado').length > 0 &&
                          pedido.prods.filter(p => p.estado !== 'Entregado').every(p => p.estado === 'Listo en estudio');
       if (hayListo && !c.tareaVideoDisparada) {
         c.tareaVideoPendiente = true; c.tareaVideoDisparada = true; changed = true;
@@ -631,6 +680,7 @@ const ESTADO_CLASES = {
   galeria_pendiente: 'sel-galeria',
   pendiente_cliente: 'sel-pendiente-c',
   edicion_renu: 'sel-edicion',
+  edicion_terminada: 'sel-edicion-terminada',
   para_subir: 'sel-para-subir',
   subidas: 'sel-subidas'
 };
@@ -673,14 +723,23 @@ function getEdicionOrdenada() {
 function renderApp() {
   const app = document.getElementById('app');
 
+  // Trabajo terminado = subidas + video resuelto + sin productos pendientes de entrega
+  const estaTerminado = c => {
+    if (c.estado !== 'subidas') return false;
+    // Tiene productos pero la tarea de video todavía no se disparó → productos aún en producción
+    if (c.tieneProductos && !c.tareaVideoDisparada) return false;
+    // Video pendiente sin resolver → esperar decisión
+    if (c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar) return false;
+    return true;
+  };
+
+  const activas = sortPorFechaSesion(clientes.filter(c => !estaTerminado(c)));
+  const trabajosTerminados = clientes.filter(c => estaTerminado(c));
+
+  // Alerta sin respuesta (sigue mostrándose arriba)
   const alertas15 = clientes.filter(c =>
     c.estado === 'pendiente_cliente' && c.fechaEnvioGaleria && diasDesde(c.fechaEnvioGaleria) >= getConfig().diasAlertaSinRespuesta
   );
-  const preEdicion = sortPorFechaSesion(clientes.filter(c => ['galeria_pendiente','pendiente_cliente'].includes(c.estado)));
-  const enEdicion = getEdicionOrdenada();
-  const paraSubir = sortPorFechaSesion(clientes.filter(c => c.estado === 'para_subir'));
-  const videoPendiente = clientes.filter(c => c.estado === 'subidas' && c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar);
-  const terminados = clientes.filter(c => c.estado === 'subidas' && !(c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar));
 
   let html = '';
 
@@ -695,45 +754,23 @@ function renderApp() {
     </div>`;
   }
 
-  if (preEdicion.length > 0) {
-    html += `<div class="seccion-header">
-      <div class="seccion-titulo">Por confirmar</div>
-      <span class="count-badge">${preEdicion.length}</span>
-    </div>`;
-    preEdicion.forEach(c => { html += renderCard(c, clientes.indexOf(c)); });
+  // ── Sección única: todas las sesiones activas ──
+  if (activas.length > 0) {
+    activas.forEach(c => {
+      const conDrag = c.estado === 'edicion_renu';
+      html += renderCard(c, clientes.indexOf(c), false, conDrag);
+    });
   }
 
-  if (enEdicion.length > 0) {
-    html += `<div class="seccion-header">
-      <div class="seccion-titulo">Edición</div>
-      <span class="count-badge">${enEdicion.length}</span>
-    </div>`;
-    enEdicion.forEach(c => { html += renderCard(c, clientes.indexOf(c), false, true); });
-  }
-
-  if (paraSubir.length > 0) {
-    html += `<div class="seccion-header">
-      <div class="seccion-titulo">Para subir</div>
-      <span class="count-badge">${paraSubir.length}</span>
-    </div>`;
-    paraSubir.forEach(c => { html += renderCard(c, clientes.indexOf(c)); });
-  }
-
-  if (videoPendiente.length > 0) {
-    html += `<div class="seccion-header" style="margin-top:8px;">
-      <div class="seccion-titulo">🎬 Video pendiente</div>
-      <span class="count-badge">${videoPendiente.length}</span>
-    </div>`;
-    videoPendiente.forEach(c => { html += renderCard(c, clientes.indexOf(c), false); });
-  }
-
-  if (terminados.length > 0) {
+  // ── Trabajos terminados ──
+  if (trabajosTerminados.length > 0) {
     html += `<div class="seccion-sep"></div>
     <div class="seccion-header">
-      <div class="seccion-titulo">Entregadas</div>
-      <span class="count-badge">${terminados.length}</span>
+      <div class="seccion-titulo">Trabajos terminados</div>
+      <span class="count-badge">${trabajosTerminados.length}</span>
+      <button class="toggle-entregadas" onclick="eliminarTodosTerminados()" style="color:#c97b7b;border-color:#c97b7b;" title="Eliminar todos">Eliminar todos</button>
     </div>`;
-    terminados.forEach(c => { html += renderCard(c, clientes.indexOf(c), true); });
+    trabajosTerminados.forEach(c => { html += renderCard(c, clientes.indexOf(c), true); });
   }
 
   app.innerHTML = html;
@@ -753,6 +790,7 @@ function estadoSelectHtml(idx, estadoActual) {
     ['galeria_pendiente', 'Galería pendiente'],
     ['pendiente_cliente', 'Pendiente cliente'],
     ['edicion_renu', 'Edición'],
+    ['edicion_terminada', 'Edición terminada'],
     ['para_subir', 'Para subir'],
     ['subidas', 'Subidas ✓'],
   ];
@@ -762,18 +800,32 @@ function estadoSelectHtml(idx, estadoActual) {
 }
 
 function renderCard(c, idx, compacto = false, conDrag = false) {
-  const diasR = c.fechaLimite ? diasHasta(c.fechaLimite) : null;
-  const urgente = diasR !== null && diasR <= 5;
   const fotosBase = fotosDelPaquete(c.paquete);
   const fotosExtras = (c.cantFotos && fotosBase && c.cantFotos > fotosBase) ? c.cantFotos - fotosBase : 0;
 
   let info = '';
 
-  if (c.fechaSesion) {
-    info += `<div class="c-info-item">
-      <span class="c-info-label">Sesión</span>
-      <span class="c-info-val">${fmt(c.fechaSesion)}</span>
-    </div>`;
+  // Fecha de entrega (primer dato visible) — solo en cards activos, no en entregadas
+  if (!compacto) {
+    let fechaEntrega = null;
+    if (c.fechaLimite) {
+      fechaEntrega = c.fechaLimite;
+    } else if (c.fechaSesion) {
+      fechaEntrega = calcLimite(c.fechaSesion, 30);
+    }
+    if (fechaEntrega) {
+      const dE = diasHasta(fechaEntrega);
+      const bc = dE < 0 ? '#c94040' : dE <= 5 ? '#e05050' : dE <= 10 ? '#e0a030' : '#5cad80';
+      const bw = c.fechaLimite ? Math.max(0, Math.min(100, 100 - (dE / getConfig().diasLimiteEdicion * 100))) : null;
+      const diasTxt = dE < 0 ? `<span style="font-size:11px;color:#c94040;margin-left:5px">(${Math.abs(dE)} días)</span>`
+                    : dE === 0 ? `<span style="font-size:11px;color:#e05050;margin-left:5px">(¡Hoy!)</span>`
+                    : `<span style="font-size:11px;color:${bc};margin-left:5px">(${dE} días)</span>`;
+      info += `<div class="c-info-item">
+        <span class="c-info-label" style="color:${dE<=5?'#c94040':'var(--muted)'};">Entrega</span>
+        <span class="c-info-val" style="color:${bc};font-size:13px;font-weight:700;">${fmt(fechaEntrega)}${diasTxt}</span>
+        ${bw !== null ? `<div class="fecha-barra"><div class="fecha-barra-fill" style="width:${bw}%;background:${bc}"></div></div>` : ''}
+      </div>`;
+    }
   }
 
   // Fotos: antes de confirmar → base del paquete; después → real
@@ -789,7 +841,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
       const estDias = diasHasta(estFecha);
       const estCol = estDias < 0 ? '#c94040' : estDias <= 2 ? '#e0a030' : '#5cad80';
       info += `<div class="c-info-item">
-        <span class="c-info-label">Entrega estimada galería</span>
+        <span class="c-info-label">Entrega galería</span>
         <span class="c-info-val" style="color:${estCol}">${fmt(estFecha)}${estDias < 0 ? ' <span style="font-size:10px">(atrasada)</span>' : estDias === 0 ? ' <span style="font-size:10px">(hoy)</span>' : ''}</span>
       </div>`;
     }
@@ -799,21 +851,6 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
     info += `<div class="c-info-item">
       <span class="c-info-label">Fotos a editar</span>
       <span class="c-info-val">${fotosLabel}</span>
-    </div>`;
-  }
-
-  // Fecha límite: 30 días desde selección (edicion + para_subir)
-  if (c.fechaLimite && ['edicion_renu','para_subir'].includes(c.estado)) {
-    const bw = Math.max(0, Math.min(100, 100 - (diasR/getConfig().diasLimiteEdicion*100)));
-    const bc = diasR <= 5 ? '#e05050' : diasR <= 10 ? '#e0a030' : '#5cad80';
-    const label = c.estado === 'edicion_renu' ? 'Límite edición' : 'Límite para subir';
-    info += `<div class="c-info-item">
-      <span class="c-info-label">${label} (30 días)</span>
-      <span class="c-info-val ${urgente?'urgente':''}">
-        ${fmt(c.fechaLimite)}
-        ${diasR !== null ? `<span style="font-size:11px;color:${bc};margin-left:5px">(${diasR > 0 ? diasR+' días' : '¡Hoy!'})</span>` : ''}
-      </span>
-      <div class="fecha-barra"><div class="fecha-barra-fill" style="width:${bw}%;background:${bc}"></div></div>
     </div>`;
   }
 
@@ -840,13 +877,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
   let acciones = '';
   if (!compacto) {
     if (c.estado === 'galeria_pendiente')
-      acciones += `<button class="btn-accion" onclick="marcarEnvioGaleria(${idx})">📤 Galería enviada</button>`;
-    if (c.estado === 'pendiente_cliente')
-      acciones += `<button class="btn-accion btn-accion-pri" onclick="abrirCF(${idx})">✓ Cliente eligió fotos</button>`;
-    if (c.estado === 'edicion_renu')
-      acciones += `<button class="btn-accion btn-accion-pri" onclick="marcarEdicionTerminada(${idx})">✓ Edición terminada</button>`;
-    if (c.estado === 'para_subir')
-      acciones += `<button class="btn-accion btn-accion-pri" onclick="marcarSubidas(${idx})">✓ Fotos subidas</button>`;
+      acciones += `<button class="btn-accion" onclick="marcarEnvioGaleria(${idx})">Galería enviada</button>`;
   } else {
     acciones += `<button class="btn-accion" onclick="marcarVista(${idx})">${c.vista ? '✓ Vista' : 'Marcar vista'}</button>`;
     acciones += `<button class="btn-accion btn-accion-del" onclick="eliminarEntregada(${idx})">Eliminar</button>`;
@@ -884,7 +915,10 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
           ${c.sinVideo ? '<span class="badge-video" style="background:var(--arena-l);color:var(--muted);">— Sin video</span>' : ''}
         </div>
       </div>
-      ${estadoSelectHtml(idx, c.estado)}
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        ${estadoSelectHtml(idx, c.estado)}
+        <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:4px;line-height:1;border-radius:6px;" onclick="abrirModalEditar(${idx})" title="Editar sesión">✏️</button>
+      </div>
     </div>
     <div class="c-body">
       ${info ? `<div class="c-info-row">${info}</div>` : ''}
@@ -1018,7 +1052,26 @@ function marcarVista(idx) {
 
 function eliminarEntregada(idx) {
   if (!confirm(`¿Eliminar a ${clientes[idx].bebe} de la lista?`)) return;
+  const id = clientes[idx].id;
   clientes.splice(idx, 1);
+  marcarCambio(id);
+  renderApp();
+}
+
+function eliminarTodosTerminados() {
+  const estaTerminado = c => {
+    if (c.estado !== 'subidas') return false;
+    // Tiene productos pero la tarea de video todavía no se disparó → productos aún en producción
+    if (c.tieneProductos && !c.tareaVideoDisparada) return false;
+    // Video pendiente sin resolver → esperar decisión
+    if (c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar) return false;
+    return true;
+  };
+  const count = clientes.filter(estaTerminado).length;
+  if (!count || !confirm(`¿Eliminar los ${count} trabajos terminados?`)) return;
+  const ids = clientes.filter(estaTerminado).map(c => c.id);
+  clientes = clientes.filter(c => !estaTerminado(c));
+  ids.forEach(id => marcarCambio(id));
   renderApp();
 }
 
@@ -1158,8 +1211,52 @@ document.getElementById('modal-cliente').addEventListener('click', e => { if (e.
 document.getElementById('modal-conf-fotos').addEventListener('click', e => { if (e.target === document.getElementById('modal-conf-fotos')) cerrarModalCF(); });
 
 // ─── TABS ─────────────────────────────────────────────────────
+function guardarLote() {
+  const bebe = document.getElementById('lote-bebe').value.trim();
+  if (!bebe) { document.getElementById('lote-bebe').focus(); return; }
+  const mama = document.getElementById('lote-mama').value.trim();
+  const fecha = document.getElementById('lote-fecha').value;
+  const paquete = document.getElementById('lote-paquete').value;
+  const notas = document.getElementById('lote-notas').value.trim();
+  const nuevo = {
+    id: 'c' + Date.now() + Math.random().toString(36).substr(2,5),
+    bebe, mama, fechaSesion: fecha, paquete: paquete||null,
+    notas: notas||null, estado: 'galeria_pendiente',
+    fechaCreacion: hoy()
+  };
+  clientes.push(nuevo);
+  marcarCambio(nuevo.id);
+  // Mostrar confirmación y limpiar
+  const ok = document.getElementById('lote-ok');
+  ok.style.display = 'inline';
+  setTimeout(() => { ok.style.display = 'none'; }, 2000);
+  document.getElementById('lote-bebe').value = '';
+  document.getElementById('lote-mama').value = '';
+  document.getElementById('lote-fecha').value = '';
+  document.getElementById('lote-paquete').value = '';
+  document.getElementById('lote-notas').value = '';
+  document.getElementById('lote-bebe').focus();
+  // Mostrar resumen de cargados
+  renderLote();
+}
+
+function renderLote() {
+  const el = document.getElementById('lote-lista');
+  if (!el) return;
+  const recientes = clientes.slice().reverse().slice(0, 10);
+  if (!recientes.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Cargadas esta sesión</div>` +
+    recientes.map((c, i) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--white);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:13px;">
+      <span style="flex:1;color:var(--marron-d);font-weight:500;">${c.bebe}</span>
+      <span style="color:var(--muted);font-size:11px;">${c.mama||''}</span>
+      ${c.paquete ? `<span class="badge-paquete">${c.paquete}</span>` : ''}
+      ${c.fechaSesion ? `<span style="font-size:10px;color:var(--muted);">${c.fechaSesion}</span>` : ''}
+      <button class="btn-sec" style="padding:3px 8px;font-size:10px;" onclick="abrirModalEditar(${clientes.indexOf(c)});showTab('carga')">✏️</button>
+    </div>`).join('');
+}
+
 function showTab(name) {
-  const labels = { sesiones:'sesiones', diseno:'diseño', stats:'estadísticas', config:'configuración' };
+  const labels = { sesiones:'sesiones', carga:'+ carga', diseno:'diseño', stats:'estadísticas', config:'configuración' };
   document.querySelectorAll('.tab-btn').forEach(b =>
     b.classList.toggle('active', b.textContent.trim().toLowerCase() === (labels[name]||name))
   );
@@ -1169,6 +1266,7 @@ function showTab(name) {
   if (name === 'diseno') renderDiseno();
   if (name === 'stats') renderStats();
   if (name === 'config') renderConfig();
+  if (name === 'carga') { renderLote(); setTimeout(() => document.getElementById('lote-bebe')?.focus(), 50); }
 }
 
 // Colores de estado igual que Picabú App (DEFAULT_ESTADOS)
