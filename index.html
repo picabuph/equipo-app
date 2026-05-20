@@ -677,8 +677,9 @@ function autoSync() {
     if (!c) return;
     if (!c.tieneProductos) { c.tieneProductos = true; changed = true; }
     if (pedido.prods && pedido.prods.length > 0) {
-      const todosEnProd = pedido.prods.every(p => p.estado === 'En producción');
-      if (todosEnProd && c.estado === 'edicion_renu') { c.estado = 'para_subir'; changed = true; }
+      const estadosBlockeantes = ['Pendiente datos cliente', 'Pendiente diseño', 'Pendiente info', 'Pendiente info cliente'];
+      const ningunoBloqueado = pedido.prods.length > 0 && !pedido.prods.some(p => estadosBlockeantes.includes(p.estado));
+      if (ningunoBloqueado && c.estado === 'edicion_terminada') { c.estado = 'para_subir'; changed = true; }
 const hayListo = pedido.prods.filter(p => p.estado !== 'Entregado').length > 0 &&
                          pedido.prods.filter(p => p.estado !== 'Entregado').every(p => p.estado === 'Listo en estudio');
       if (hayListo && !c.tareaVideoDisparada) {
@@ -757,7 +758,13 @@ function toggleEstadoPop(idx) {
     const btn = pop.previousElementSibling;
     if (btn) {
       const r = btn.getBoundingClientRect();
-      pop.style.top = (r.bottom + 4) + 'px';
+      const popH = 244; // max-height del popup (search + opciones)
+      const spaceBelow = window.innerHeight - r.bottom - 8;
+      if (spaceBelow < popH) {
+        pop.style.top = Math.max(4, r.top - popH - 4) + 'px';
+      } else {
+        pop.style.top = (r.bottom + 4) + 'px';
+      }
       pop.style.left = r.left + 'px';
     }
     fillEstadoPopOpts(idx, '');
@@ -1473,6 +1480,20 @@ function toggleEstadoD(pidx, eidx) {
   const pop = document.getElementById(id);
   if (!pop) return;
   const opening = !pop.classList.contains('open');
+  if (opening) {
+    const btn = pop.previousElementSibling;
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      const popH = 244;
+      const spaceBelow = window.innerHeight - r.bottom - 8;
+      if (spaceBelow < popH) {
+        pop.style.top = Math.max(4, r.top - popH - 4) + 'px';
+      } else {
+        pop.style.top = (r.bottom + 4) + 'px';
+      }
+      pop.style.left = r.left + 'px';
+    }
+  }
   pop.classList.toggle('open', opening);
   _activeEPopD = opening ? id : null;
   if (opening) {
