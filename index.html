@@ -47,7 +47,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .c-card { background:var(--white); border:1px solid var(--border); border-radius:12px; margin-bottom:8px; overflow:hidden; transition:opacity 0.2s; }
 .c-card.drag-over { border:2px dashed var(--rosa-d); opacity:0.7; }
 .c-card.vista { opacity:0.55; }
-.c-header { display:flex; align-items:center; padding:9px 12px; gap:8px; }
+.c-header { display:flex; align-items:center; padding:7px 12px; gap:8px; }
 .c-nombres { flex:1; min-width:0; }
 .c-bebe { font-family:'Yeseva One',serif; font-size:15px; color:var(--marron-d); display:flex; align-items:center; gap:6px; }
 .drag-handle { color:var(--muted); font-size:13px; cursor:grab; opacity:0.35; user-select:none; flex-shrink:0; }
@@ -71,8 +71,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .estado-opt:hover { background:var(--arena-l); }
 .estado-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 
-.c-body { padding:0 12px 10px; }
-.c-info-row { display:flex; align-items:flex-start; gap:14px; margin-bottom:8px; flex-wrap:wrap; }
+.c-body { padding:0 12px 6px; }
+.c-info-row { display:flex; align-items:flex-start; gap:14px; margin-bottom:4px; flex-wrap:wrap; }
 .c-info-item { display:flex; flex-direction:column; gap:1px; }
 .c-info-label { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:500; }
 .c-info-val { font-size:12px; color:var(--text); font-weight:500; }
@@ -118,6 +118,11 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .parser-box textarea { width:100%; padding:7px 11px; border:1px solid var(--arena); border-radius:8px; font-size:12px; background:var(--white); color:var(--text); font-family:'Montserrat',sans-serif; outline:none; resize:none; }
 .parser-hint { font-size:10px; color:var(--muted); margin-top:4px; font-style:italic; }
 .fotos-base-hint { font-size:11px; color:var(--marron); margin-top:5px; font-weight:500; }
+.ical-titulo { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.ical-item { display:flex; align-items:center; gap:10px; padding:7px 12px; background:var(--white); border:1px solid var(--border); border-radius:9px; margin-bottom:5px; cursor:pointer; }
+.ical-item:hover { background:var(--arena-l); border-color:var(--arena); }
+.ical-fecha { font-size:10px; color:var(--muted); flex-shrink:0; min-width:48px; }
+.ical-nombre { font-size:12px; color:var(--marron-d); font-weight:500; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .mbox-btns { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; flex-wrap:wrap; }
 .btn-sec { padding:8px 18px; background:none; border:1px solid var(--border); border-radius:9px; cursor:pointer; font-size:12px; color:var(--muted); font-family:'Montserrat',sans-serif; }
 .btn-pri { padding:8px 20px; background:var(--marron-d); color:var(--rosa-l); border:none; border-radius:9px; cursor:pointer; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-family:'Montserrat',sans-serif; font-weight:500; }
@@ -271,11 +276,29 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 
 <div class="page" id="page-carga">
   <div class="container" style="max-width:520px;">
-    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:16px;">Carga de sesiones</div>
-    <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:20px 22px;" id="carga-form" onkeydown="if(event.key==='Enter'&&event.target.tagName!=='SELECT')guardarLote()">
+
+    <!-- Sección iCal -->
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;">
+      <div class="ical-titulo">
+        📅 Sesiones del calendario
+        <button onclick="fetchCalendar()" style="margin-left:auto;padding:4px 12px;background:none;border:1px solid var(--border);border-radius:7px;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:'Montserrat',sans-serif;color:var(--marron);">Actualizar</button>
+      </div>
+      <div id="ical-sugerencias"><div style="font-size:11px;color:var(--muted);">Tocá "Actualizar" para ver sesiones de los próximos 30 días.</div></div>
+    </div>
+
+    <!-- Formulario completo -->
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:18px 20px;" id="carga-form" onkeydown="if(event.key==='Enter'&&event.target.tagName!=='SELECT')guardarLote()">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:14px;">Nueva sesión</div>
+
+      <div class="parser-box">
+        <label>Pegar desde agenda (opcional)</label>
+        <textarea id="lote-parser" rows="2" placeholder="Ej: Clara CS (Melody Petrosillo) Paq Premium" oninput="aplicarParserLote()"></textarea>
+        <div class="parser-hint">Detecta nombre, mamá y paquete — podés editar después</div>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="fl" style="grid-column:1/3">
-          <label>Nombre del bebé / tipo de sesión</label>
+          <label>Nombre del bebé / sesión</label>
           <input type="text" id="lote-bebe" placeholder="Ej: Valentina NB" autocomplete="off">
         </div>
         <div class="fl">
@@ -288,7 +311,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
         </div>
         <div class="fl">
           <label>Paquete</label>
-          <select id="lote-paquete">
+          <select id="lote-paquete" onchange="actualizarFotosHint()">
             <option value="">— sin especificar —</option>
             <option value="petite">Petite (10 fotos)</option>
             <option value="premium">Premium (20 fotos)</option>
@@ -299,8 +322,32 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
             <option value="premium lifestyle">Premium Lifestyle (50 fotos)</option>
             <option value="video backstage">Video de backstage</option>
           </select>
+          <div class="fotos-base-hint" id="lote-fotos-hint" style="display:none;"></div>
         </div>
         <div class="fl">
+          <label>Estado inicial</label>
+          <select id="lote-estado" onchange="sincEstadoLote()">
+            <option value="galeria_pendiente">Galería pendiente</option>
+            <option value="pendiente_cliente">Pendiente cliente</option>
+            <option value="edicion_renu">Edición</option>
+            <option value="edicion_terminada">Edición terminada</option>
+            <option value="para_subir">Para subir</option>
+            <option value="subidas">Subidas</option>
+          </select>
+        </div>
+        <div class="fl" id="lote-wrap-conf" style="display:none">
+          <label>Fecha confirmación de fotos</label>
+          <input type="date" id="lote-fecha-conf" oninput="autoLimiteLote()">
+        </div>
+        <div class="fl" id="lote-wrap-limite" style="display:none">
+          <label>Fecha límite entrega (30 días)</label>
+          <input type="date" id="lote-fecha-limite">
+        </div>
+        <div class="fl" id="lote-wrap-cant" style="display:none">
+          <label>Cantidad de fotos</label>
+          <input type="number" id="lote-cant" placeholder="Ej: 20" min="1">
+        </div>
+        <div class="fl" style="grid-column:1/3">
           <label>Notas (opcional)</label>
           <input type="text" id="lote-notas" placeholder="Ej: cliente VIP, doble sesión...">
         </div>
@@ -310,7 +357,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
         <button class="btn-pri" onclick="guardarLote()">Guardar y cargar otro</button>
       </div>
     </div>
-    <div style="margin-top:24px;" id="lote-lista"></div>
+
+    <div style="margin-top:18px;" id="lote-lista"></div>
   </div>
 </div>
 
@@ -490,9 +538,24 @@ let confirmandoIdx = null;
 let mostrarEntregadas = false;
 let dragSrcId = null;
 let ordenEdicion = [];
+let ordenTodas = JSON.parse(localStorage.getItem('eq_orden_todas')||'[]');
+function getActivasOrdenadas(activas) {
+  if (!ordenTodas.length) return sortPorFechaSesion(activas);
+  const ordered = [];
+  ordenTodas.forEach(id => { const c = activas.find(x => x.id === id); if (c) ordered.push(c); });
+  activas.forEach(c => { if (!ordenTodas.includes(c.id)) ordered.push(c); });
+  return ordered;
+}
 
 // ─── SYNC (diseñado para Firebase — igual que picabu app) ─────
-let fbSyncStatus = (()=>{ try{ return JSON.parse(localStorage.getItem('equipo_sync')||'{}'); }catch(e){ return {}; } })();
+let fbSyncStatus = (()=>{
+  try {
+    const s = JSON.parse(localStorage.getItem('equipo_sync')||'{}');
+    // Si quedó en 'saving' de una sesión anterior, lo marcamos ok para no mostrar spinner eterno
+    Object.keys(s).forEach(k => { if (s[k].status === 'saving') s[k].status = 'ok'; });
+    return s;
+  } catch(e) { return {}; }
+})();
 
 function fmtTs(ts) {
   if (!ts) return '';
@@ -550,6 +613,12 @@ function reintentarTodos() {
 let _ignorarSnapshotRenu = false;
 let _fbAngieConectado = false;
 let _angieLastSync = { ts: null, tsStr: '' };
+let _terminadosOpen = localStorage.getItem('eq_terminados_open') !== 'false';
+function toggleTerminados() {
+  _terminadosOpen = !_terminadosOpen;
+  localStorage.setItem('eq_terminados_open', String(_terminadosOpen));
+  renderApp();
+}
 
 function marcarCambio(id) {
   if (typeof window.__renuSave === 'function') {
@@ -654,6 +723,25 @@ function aplicarParser() {
     if (match) sel.value = match;
   }
   actualizarFotosHint();
+}
+function aplicarParserLote() {
+  const txt = document.getElementById('lote-parser')?.value || '';
+  if (!txt.trim()) return;
+  const { nombre, mama, paquete } = parsearTexto(txt);
+  if (nombre) { const el = document.getElementById('lote-bebe'); if(el) el.value = nombre; }
+  if (mama) { const el = document.getElementById('lote-mama'); if(el) el.value = mama; }
+  if (paquete) {
+    const sel = document.getElementById('lote-paquete');
+    if (sel) { const opt = Array.from(sel.options).find(o => o.value === paquete || o.value.includes(paquete)); if(opt) sel.value = opt.value; }
+  }
+  actualizarFotosHint();
+}
+function actualizarFotosHint() {
+  const paq = document.getElementById('lote-paquete')?.value || '';
+  const hint = document.getElementById('lote-fotos-hint'); if(!hint) return;
+  const fotos = fotosDelPaquete(paq);
+  if (fotos) { hint.style.display = 'block'; hint.textContent = `${fotos} fotos incluidas`; }
+  else hint.style.display = 'none';
 }
 
 function actualizarFotosHint() {
@@ -853,7 +941,7 @@ function renderApp() {
     return true;
   };
 
-  const activas = sortPorFechaSesion(clientes.filter(c => !estaTerminado(c)));
+  const activas = getActivasOrdenadas(clientes.filter(c => !estaTerminado(c)));
   const trabajosTerminados = clientes.filter(c => estaTerminado(c));
 
   // Alerta sin respuesta (sigue mostrándose arriba)
@@ -863,8 +951,14 @@ function renderApp() {
 
   let html = '';
 
+  // Sync bar
+  const syncTxt = _angieLastSync.tsStr
+    ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#7aaa8a;margin-right:4px;vertical-align:middle;"></span>Sincronizado ${_angieLastSync.tsStr}`
+    : `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ccc;margin-right:4px;vertical-align:middle;"></span>Conectando con Firebase...`;
+  html += `<div style="font-size:10px;color:var(--muted);text-align:right;padding:0 2px 8px;letter-spacing:0.3px;">${syncTxt}</div>`;
+
   if (!clientes.length) {
-    html += `<div style="text-align:center;color:var(--muted);font-size:13px;padding:40px 20px;">${_fbAngieConectado ? 'No hay sesiones todavía. Tocá + para agregar una.' : 'Conectando a Firebase…'}</div>`;
+    html += `<div style="text-align:center;color:var(--muted);font-size:13px;padding:40px 20px;">${_fbAngieConectado ? 'No hay sesiones todavía. Usá la pestaña + Carga para agregar.' : 'Conectando a Firebase…'}</div>`;
   }
 
   if (alertas15.length > 0) {
@@ -875,29 +969,24 @@ function renderApp() {
   }
 
   // ── Sección única: todas las sesiones activas ──
-  if (activas.length > 0) {
-    activas.forEach(c => {
-      const conDrag = c.estado === 'edicion_renu';
-      html += renderCard(c, clientes.indexOf(c), false, conDrag);
-    });
-  }
+  activas.forEach(c => { html += renderCard(c, clientes.indexOf(c), false, false); });
 
-  // ── Trabajos terminados ──
+  // ── Trabajos terminados (colapsable) ──
   if (trabajosTerminados.length > 0) {
     html += `<div class="seccion-sep"></div>
     <div class="seccion-header">
       <div class="seccion-titulo">Trabajos terminados</div>
       <span class="count-badge">${trabajosTerminados.length}</span>
-      <button class="toggle-entregadas" onclick="eliminarTodosTerminados()" style="color:#c97b7b;border-color:#c97b7b;" title="Eliminar todos">Eliminar todos</button>
+      <button class="toggle-entregadas" onclick="toggleTerminados()" style="margin-left:auto;" title="${_terminadosOpen?'Ocultar':'Mostrar'}">${_terminadosOpen?'▼ Ocultar':'▶ Mostrar'}</button>
     </div>`;
-    trabajosTerminados.forEach(c => { html += renderCard(c, clientes.indexOf(c), true); });
+    if (_terminadosOpen) trabajosTerminados.forEach(c => { html += renderCard(c, clientes.indexOf(c), true); });
   }
 
   app.innerHTML = html;
   actualizarBandeja();
 
-  // Drag listeners para edición
-  app.querySelectorAll('.card-edicion').forEach(el => {
+  // Drag listeners para todas las cards
+  app.querySelectorAll('.c-card').forEach(el => {
     el.addEventListener('dragstart', onDragStart);
     el.addEventListener('dragover', onDragOver);
     el.addEventListener('drop', onDrop);
@@ -993,8 +1082,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
 
   let acciones = '';
   if (!compacto) {
-    if (c.estado === 'galeria_pendiente')
-      acciones += `<button class="btn-accion" onclick="marcarEnvioGaleria(${idx})">Galería enviada</button>`;
+    // sin botón "Galería enviada"
   } else {
     acciones += `<button class="btn-accion" onclick="marcarVista(${idx})">${c.vista ? '✓ Vista' : 'Marcar vista'}</button>`;
     acciones += `<button class="btn-accion btn-accion-del" onclick="eliminarEntregada(${idx})">Eliminar</button>`;
@@ -1012,13 +1100,9 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
   if (c.sinVideo || c.videoSinGrabar)
     acciones += ` <span style="font-size:10px;color:var(--muted);letter-spacing:0.5px;">— Sin video</span>`;
 
-  const dragAttrs = conDrag
-    ? `class="c-card card-edicion" draggable="true" data-id="${c.id}"`
-    : `class="c-card${c.vista?' vista':''}"`;
-
-  return `<div ${dragAttrs}>
+  return `<div class="c-card${c.vista?' vista':''}" draggable="true" data-id="${c.id}">
     <div class="c-header">
-      ${conDrag ? '<span class="drag-handle" title="Arrastrar para reordenar">⠿</span>' : ''}
+      <span class="drag-handle" title="Arrastrar para reordenar">⠿</span>
       <div class="c-nombres">
         <div class="c-bebe-row">
           <span class="c-bebe">${c.bebe||'—'}</span>
@@ -1056,25 +1140,32 @@ function onDragStart(e) {
 }
 function onDragOver(e) {
   e.preventDefault();
-  document.querySelectorAll('.card-edicion').forEach(el => el.classList.remove('drag-over'));
+  document.querySelectorAll('.c-card').forEach(el => el.classList.remove('drag-over'));
   e.currentTarget.classList.add('drag-over');
 }
 function onDrop(e) {
   e.preventDefault();
   const targetId = e.currentTarget.dataset.id;
   if (!dragSrcId || dragSrcId === targetId) return;
-  const enEdicion = getEdicionOrdenada();
-  const ids = enEdicion.map(c => c.id);
+  const activas = getActivasOrdenadas(clientes.filter(c => {
+    if (c.estado !== 'subidas') return true;
+    if (c.tieneProductos && !c.tareaVideoDisparada) return true;
+    if (c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar) return true;
+    return false;
+  }));
+  const ids = activas.map(c => c.id);
   const srcPos = ids.indexOf(dragSrcId);
   const tgtPos = ids.indexOf(targetId);
+  if (srcPos === -1 || tgtPos === -1) return;
   ids.splice(srcPos, 1);
   ids.splice(tgtPos, 0, dragSrcId);
-  ordenEdicion = ids;
+  ordenTodas = ids;
+  localStorage.setItem('eq_orden_todas', JSON.stringify(ordenTodas));
   renderApp();
 }
 function onDragEnd(e) {
   e.currentTarget.style.opacity = '';
-  document.querySelectorAll('.card-edicion').forEach(el => el.classList.remove('drag-over'));
+  document.querySelectorAll('.c-card').forEach(el => el.classList.remove('drag-over'));
 }
 
 
@@ -1328,33 +1419,118 @@ document.getElementById('modal-cliente').addEventListener('click', e => { if (e.
 document.getElementById('modal-conf-fotos').addEventListener('click', e => { if (e.target === document.getElementById('modal-conf-fotos')) cerrarModalCF(); });
 
 // ─── TABS ─────────────────────────────────────────────────────
+// ─── iCAL CALENDARIO ──────────────────────────────────────────
+const ICAL_PROXY = 'https://wispy-sun-ee88.picabu-ph.workers.dev';
+const ICAL_URLS = [
+  'https://calendar.google.com/calendar/ical/115ef3604215752ea3aada6200fb4789012c32f7a2bfc602aea0f28ef6569071%40group.calendar.google.com/private-121f05b7fbc537f1b512fcea3a1b63bd/basic.ics'
+];
+function parseIcal(text) {
+  const events = []; const blocks = text.split('BEGIN:VEVENT');
+  for (let i = 1; i < blocks.length; i++) {
+    const b = blocks[i];
+    const sm = b.match(/SUMMARY:([^\r\n]+)/); const ds = b.match(/DTSTART(?:;[^:]+)?:([^\r\n]+)/);
+    if (!sm || !ds) continue;
+    const summary = sm[1].replace(/\\,/g,',').replace(/\\n/g,' ').trim();
+    const dtStr = ds[1].trim();
+    if (dtStr.length < 8) continue;
+    const fecha = `${dtStr.substr(0,4)}-${dtStr.substr(4,2)}-${dtStr.substr(6,2)}`;
+    events.push({ summary, fecha });
+  }
+  return events;
+}
+let _icalCache = [];
+async function fetchCalendar() {
+  const el = document.getElementById('ical-sugerencias'); if (!el) return;
+  el.innerHTML = '<div style="font-size:11px;color:var(--muted);">Cargando...</div>';
+  const hoyStr = hoy();
+  const lim = new Date(); lim.setDate(lim.getDate() + 30);
+  const limStr = lim.toISOString().split('T')[0];
+  let eventos = [];
+  for (const url of ICAL_URLS) {
+    try {
+      const resp = await fetch(`${ICAL_PROXY}?url=${encodeURIComponent(url)}`);
+      if (!resp.ok) continue;
+      parseIcal(await resp.text()).forEach(e => { if (e.fecha >= hoyStr && e.fecha <= limStr) eventos.push(e); });
+    } catch(e) { console.warn('iCal:', e); }
+  }
+  eventos.sort((a,b) => a.fecha.localeCompare(b.fecha));
+  const seen = new Set();
+  eventos = eventos.filter(e => { const k = e.fecha+e.summary; if(seen.has(k))return false; seen.add(k); return true; });
+  _icalCache = eventos;
+  renderIcalList();
+}
+function renderIcalList() {
+  const el = document.getElementById('ical-sugerencias'); if (!el) return;
+  if (!_icalCache.length) { el.innerHTML = '<div style="font-size:11px;color:var(--muted);">No hay sesiones en los próximos 30 días.</div>'; return; }
+  const norm = s => (s||'').toLowerCase().trim();
+  const nMatch = (a, b) => { const na=norm(a), nb=norm(b); if (!na||!nb) return false; return na===nb||na.includes(nb)||nb.includes(na); };
+  const pendientes = _icalCache.filter(ev => {
+    const p = parsearTexto(ev.summary);
+    return !clientes.some(c => c.fechaSesion === ev.fecha && (nMatch(c.bebe, p.nombre) || nMatch(c.mama, p.mama)));
+  });
+  if (!pendientes.length) { el.innerHTML = '<div style="font-size:11px;color:#7aaa8a;">✓ Todas las sesiones del calendario ya están cargadas.</div>'; return; }
+  el.innerHTML = pendientes.map(ev => {
+    const p = parsearTexto(ev.summary);
+    const bEsc = (p.nombre||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const mEsc = (p.mama||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return `<div class="ical-item" onclick="fillFormFromIcal('${ev.fecha}','${bEsc}','${mEsc}','${p.paquete||''}')">
+      <span class="ical-fecha">${fmt(ev.fecha)}</span>
+      <span class="ical-nombre">${ev.summary}</span>
+      ${p.paquete ? `<span class="badge-paquete">${p.paquete}</span>` : ''}
+    </div>`;
+  }).join('');
+}
+function fillFormFromIcal(fecha, bebe, mama, paquete) {
+  const b = document.getElementById('lote-bebe'); if(b) b.value = bebe;
+  const m = document.getElementById('lote-mama'); if(m) m.value = mama;
+  const f = document.getElementById('lote-fecha'); if(f) f.value = fecha;
+  const p = document.getElementById('lote-paquete');
+  if (p && paquete) { const opt = Array.from(p.options).find(o => o.value === paquete || o.value.startsWith(paquete)); if(opt) p.value = opt.value; }
+  actualizarFotosHint();
+  document.getElementById('lote-bebe')?.scrollIntoView({behavior:'smooth',block:'center'});
+  document.getElementById('lote-bebe')?.focus();
+}
+function sincEstadoLote() {
+  const estado = document.getElementById('lote-estado')?.value || '';
+  const needConf = ['edicion_renu','edicion_terminada','para_subir','subidas'];
+  const show = needConf.includes(estado);
+  document.getElementById('lote-wrap-conf').style.display = show ? '' : 'none';
+  document.getElementById('lote-wrap-limite').style.display = show ? '' : 'none';
+  document.getElementById('lote-wrap-cant').style.display = show ? '' : 'none';
+}
+function autoLimiteLote() {
+  const v = document.getElementById('lote-fecha-conf')?.value;
+  if (v) { const el = document.getElementById('lote-fecha-limite'); if(el) el.value = calcLimite(v, 30); }
+}
+
 function guardarLote() {
   const bebe = document.getElementById('lote-bebe').value.trim();
   if (!bebe) { document.getElementById('lote-bebe').focus(); return; }
-  const mama = document.getElementById('lote-mama').value.trim();
-  const fecha = document.getElementById('lote-fecha').value;
-  const paquete = document.getElementById('lote-paquete').value;
-  const notas = document.getElementById('lote-notas').value.trim();
+  const estado = document.getElementById('lote-estado')?.value || 'galeria_pendiente';
+  const fechaConf = document.getElementById('lote-fecha-conf')?.value || null;
   const nuevo = {
     id: 'c' + Date.now() + Math.random().toString(36).substr(2,5),
-    bebe, mama, fechaSesion: fecha, paquete: paquete||null,
-    notas: notas||null, estado: 'galeria_pendiente',
-    fechaCreacion: hoy()
+    bebe,
+    mama: document.getElementById('lote-mama').value.trim(),
+    fechaSesion: document.getElementById('lote-fecha').value || null,
+    paquete: document.getElementById('lote-paquete').value || null,
+    notas: document.getElementById('lote-notas').value.trim() || null,
+    estado, fechaCreacion: hoy(),
+    fechaConfirmacion: fechaConf,
+    fechaLimite: document.getElementById('lote-fecha-limite')?.value || (fechaConf ? calcLimite(fechaConf, 30) : null),
+    cantFotos: document.getElementById('lote-cant')?.value ? parseInt(document.getElementById('lote-cant').value) : null,
   };
   clientes.push(nuevo);
   marcarCambio(nuevo.id);
-  // Mostrar confirmación y limpiar
   const ok = document.getElementById('lote-ok');
   ok.style.display = 'inline';
   setTimeout(() => { ok.style.display = 'none'; }, 2000);
-  document.getElementById('lote-bebe').value = '';
-  document.getElementById('lote-mama').value = '';
-  document.getElementById('lote-fecha').value = '';
-  document.getElementById('lote-paquete').value = '';
-  document.getElementById('lote-notas').value = '';
+  ['lote-parser','lote-bebe','lote-mama','lote-fecha','lote-paquete','lote-notas','lote-fecha-conf','lote-fecha-limite','lote-cant'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('lote-estado').value = 'galeria_pendiente';
+  sincEstadoLote(); actualizarFotosHint();
   document.getElementById('lote-bebe').focus();
-  // Mostrar resumen de cargados
   renderLote();
+  renderIcalList();
 }
 
 function renderLote() {
@@ -1383,10 +1559,10 @@ function showTab(name) {
   if (name === 'diseno') renderDiseno();
   if (name === 'stats') renderStats();
   if (name === 'config') renderConfig();
-  if (name === 'carga') { renderLote(); setTimeout(() => document.getElementById('lote-bebe')?.focus(), 50); }
-  // FAB solo en sesiones
+  if (name === 'carga') { renderLote(); fetchCalendar(); setTimeout(() => document.getElementById('lote-bebe')?.focus(), 50); }
+  // FAB oculto siempre (se usa pestaña Carga para agregar)
   const fab = document.querySelector('.fab');
-  if (fab) fab.style.display = name === 'sesiones' ? 'flex' : 'none';
+  if (fab) fab.style.display = 'none';
 }
 
 // Colores de estado igual que Picabú App (DEFAULT_ESTADOS)
