@@ -377,7 +377,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   <div class="container" id="config-container"></div>
 </div>
 
-<button class="fab" onclick="abrirModalNuevo()" title="Agregar cliente">+</button>
+<button class="fab" onclick="abrirModalNuevo()" title="Agregar cliente" style="display:none">+</button>
 
 <!-- MODAL CLIENTE -->
 <div class="overlay" id="modal-cliente">
@@ -1560,9 +1560,6 @@ function showTab(name) {
   if (name === 'stats') renderStats();
   if (name === 'config') renderConfig();
   if (name === 'carga') { renderLote(); fetchCalendar(); setTimeout(() => document.getElementById('lote-bebe')?.focus(), 50); }
-  // FAB oculto siempre (se usa pestaña Carga para agregar)
-  const fab = document.querySelector('.fab');
-  if (fab) fab.style.display = 'none';
 }
 
 // Colores de estado igual que Picabú App (DEFAULT_ESTADOS)
