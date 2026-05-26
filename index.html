@@ -160,11 +160,16 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 #page-diseno .prod-nombre { flex:1; font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 #page-diseno .prod-drag { color:var(--muted); cursor:default; font-size:14px; flex-shrink:0; user-select:none; }
 #page-diseno .ficha-btn { width:24px; height:24px; border-radius:6px; background:var(--arena-l); border:1px solid var(--arena); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--muted); font-size:13px; padding:0; line-height:1; cursor:pointer; }
+#page-diseno .ficha-btn.ficha-btn-ok { background:#d4c8bf; border-color:#c4b8af; color:var(--marron-d); }
 #page-diseno .nota-ico { font-size:12px; flex-shrink:0; width:18px; text-align:center; }
 #page-diseno .estado-wrap { position:relative; flex-shrink:0; width:140px; }
-#page-diseno .estado-btn { font-size:10px; font-weight:500; padding:4px 10px; border-radius:20px; border:none; white-space:nowrap; font-family:'Montserrat',sans-serif; min-width:100px; text-align:center; cursor:pointer; }
-#page-diseno .nped-tag { min-width:28px; height:20px; border-radius:5px; background:var(--arena-l); border:1px solid var(--arena); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:10px; color:var(--muted); font-weight:500; padding:0 5px; font-family:'Montserrat',sans-serif; white-space:nowrap; letter-spacing:0.5px; }
+#page-diseno .estado-btn { font-size:10px; font-weight:500; padding:4px 10px; border-radius:20px; border:none; white-space:nowrap; font-family:'Montserrat',sans-serif; width:100%; text-align:center; cursor:pointer; display:block; }
+#page-diseno .nped-tag { width:52px; height:20px; border-radius:5px; background:var(--arena-l); border:1px solid var(--arena); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:10px; color:var(--muted); font-weight:500; padding:0; font-family:'Montserrat',sans-serif; white-space:nowrap; letter-spacing:0.5px; cursor:pointer; box-sizing:border-box; }
 #page-diseno .nped-tag.filled { background:#d4c8bf; color:var(--marron-d); border-color:#c4b8af; font-weight:600; }
+#page-diseno .nped-inp { width:52px; height:20px; border-radius:5px; border:1px solid var(--rosa); background:var(--white); font-size:10px; font-family:'Montserrat',sans-serif; color:var(--marron-d); padding:0 5px; outline:none; text-align:center; box-sizing:border-box; }
+#page-diseno .prod-nombre-edit { flex:1; font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:none; border:none; outline:none; cursor:text; font-family:'Montserrat',sans-serif; color:var(--marron-d); padding:0; }
+#page-diseno .drag-handle { color:var(--muted); font-size:13px; cursor:grab; opacity:0.4; user-select:none; flex-shrink:0; }
+#page-diseno .c-card { position:relative; }
 #page-diseno .c-footer { display:flex; align-items:center; gap:10px; padding:10px 18px; border-top:1px solid var(--border); flex-wrap:wrap; position:relative; }
 /* alertas estilo Picabú */
 #page-diseno .alert-box { background:#fef3e2; border:1px solid #f0c040; border-radius:10px; padding:14px 16px; margin-bottom:16px; flex:1; min-width:0; }
@@ -768,8 +773,8 @@ function autoSync() {
       const estadosBlockeantes = ['Pendiente datos cliente', 'Pendiente diseño', 'Pendiente info', 'Pendiente info cliente'];
       const ningunoBloqueado = pedido.prods.length > 0 && !pedido.prods.some(p => estadosBlockeantes.includes(p.estado));
       if (ningunoBloqueado && c.estado === 'edicion_terminada') { c.estado = 'para_subir'; changed = true; }
-const hayListo = pedido.prods.filter(p => p.estado !== 'Entregado').length > 0 &&
-                         pedido.prods.filter(p => p.estado !== 'Entregado').every(p => p.estado === 'Listo en estudio');
+const visiblesL = pedido.prods.filter(p => p.estado !== 'Entregado' && !p.soloWA && !esPlantillaD(p.nombre));
+const hayListo = visiblesL.length > 0 && visiblesL.every(p => p.estado === 'Listo en estudio');
       if (hayListo && !c.tareaVideoDisparada) {
         c.tareaVideoPendiente = true; c.tareaVideoDisparada = true; changed = true;
       }
@@ -1464,6 +1469,26 @@ function renderIcalList() {
   if (!_icalCache.length) { el.innerHTML = '<div style="font-size:11px;color:var(--muted);">No hay sesiones en los próximos 30 días.</div>'; return; }
   const norm = s => (s||'').toLowerCase().trim();
   const nMatch = (a, b) => { const na=norm(a), nb=norm(b); if (!na||!nb) return false; return na===nb||na.includes(nb)||nb.includes(na); };
+
+  // Auto-actualizar fecha de sesiones reprogramadas en el calendario
+  // Solo aplica si bebe Y mama coinciden, para evitar falsos positivos con nombres comunes
+  let huboUpdate = false;
+  _icalCache.forEach(ev => {
+    const p = parsearTexto(ev.summary);
+    if (!p.nombre || !p.mama) return; // requerir ambos nombres para seguridad
+    const c = clientes.find(cl =>
+      nMatch(cl.bebe, p.nombre) && nMatch(cl.mama, p.mama)
+      && cl.fechaSesion && cl.fechaSesion !== ev.fecha
+      && !clientes.some(c2 => c2 !== cl && c2.fechaSesion === ev.fecha && (nMatch(c2.bebe, p.nombre) || nMatch(c2.mama, p.mama)))
+    );
+    if (c) {
+      c.fechaSesion = ev.fecha;
+      marcarCambio(c.id);
+      huboUpdate = true;
+    }
+  });
+  if (huboUpdate) renderApp(); // actualizar vista de sesiones
+
   const pendientes = _icalCache.filter(ev => {
     const p = parsearTexto(ev.summary);
     return !clientes.some(c => c.fechaSesion === ev.fecha && (nMatch(c.bebe, p.nombre) || nMatch(c.mama, p.mama)));
@@ -1587,36 +1612,172 @@ function disenoSyncHtml() {
   return `<span style="color:#7aaa8a;font-size:10px;" title="Datos de Picabú App — ${new Date(_angieLastSync.ts).toLocaleString('es-AR')}">✓ ${_angieLastSync.tsStr}</span>`;
 }
 
+// ── HELPERS DISEÑO (idénticos a Picabú App) ──
+function esPlantillaD(nombre) {
+  return /^\d+\s*plantillas?\s*(de\s*)?datos/i.test(nombre || '');
+}
+function nombreDisenoD(pedido, x) {
+  const m = (x.nombre||'').match(/^(.*\()(\d+)(H\).*)$/i);
+  if (!m) return x.nombre || '';
+  let extras = 0;
+  (pedido.prods||[]).forEach(p => {
+    const pm = (p.nombre||'').match(/^(\d+)\s*plantillas?\s*(de\s*)?datos/i);
+    if (pm) extras += parseInt(pm[1]);
+  });
+  if (!extras) return x.nombre || '';
+  return m[1] + (parseInt(m[2]) + extras) + m[3];
+}
+function daysSince(ds) {
+  if (!ds) return 0;
+  const p = ds.split('/');
+  if (p.length < 3) return 0;
+  try { const d = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0])); return Math.floor((Date.now()-d.getTime())/86400000); }
+  catch(e) { return 0; }
+}
+function getDias() { return parseInt(localStorage.getItem('picabu_dias')||'2'); }
+
+// ── CONTACTADOS (sincronizados con picabu/pedidos via Firebase) ──
+function getContactados() { try{ return JSON.parse(localStorage.getItem('picabu_contactados')||'{}'); }catch(e){ return {}; } }
+function saveContactados(o) {
+  localStorage.setItem('picabu_contactados', JSON.stringify(o));
+  if (typeof window.saveContactadosToFirebase === 'function') window.saveContactadosToFirebase(o);
+}
+window.setContactadosFromFirebase = function(contactados) {
+  const nuevo = contactados || {};
+  localStorage.setItem('picabu_contactados', JSON.stringify(nuevo));
+  const tabActiva = document.querySelector('.tab-btn.active')?.textContent.trim().toLowerCase();
+  if (tabActiva === 'diseño') renderDiseno();
+};
+function marcarContactado(key, checked) {
+  const o = getContactados();
+  if (checked) o[key] = { ts: Date.now() }; else delete o[key];
+  saveContactados(o);
+  renderDiseno();
+}
+
+// ── DRAG & DROP CARDS CLIENTE (orden local) ──
+let dragDisenoCI = null;
+let ordenDisenoD = JSON.parse(localStorage.getItem('eq_orden_diseno')||'[]');
+function getDisenoOrdenado(lista) {
+  if (!ordenDisenoD.length) return lista;
+  const ord = [];
+  ordenDisenoD.forEach(id => { const c = lista.find(p => p.bebe+p.mama === id); if(c) ord.push(c); });
+  lista.forEach(c => { if (!ordenDisenoD.includes(c.bebe+c.mama)) ord.push(c); });
+  return ord;
+}
+function onDragStartClienteD(e, idx) { dragDisenoCI = idx; e.dataTransfer.effectAllowed='move'; }
+function onDragOverClienteD(e, idx) { e.preventDefault(); document.getElementById(`dcard-${idx}`)?.classList.add('drag-over'); }
+function onDropClienteD(e, idx) {
+  e.preventDefault();
+  document.getElementById(`dcard-${idx}`)?.classList.remove('drag-over');
+  if (dragDisenoCI === null || dragDisenoCI === idx) return;
+  const lista = PEDIDOS_ANGIE_SIMULADOS.filter(p => !todosEntregados(p));
+  const ids = getDisenoOrdenado(lista).map(p => p.bebe+p.mama);
+  const fi = ids.indexOf(PEDIDOS_ANGIE_SIMULADOS[dragDisenoCI]?.bebe + PEDIDOS_ANGIE_SIMULADOS[dragDisenoCI]?.mama);
+  const ti = ids.indexOf(PEDIDOS_ANGIE_SIMULADOS[idx]?.bebe + PEDIDOS_ANGIE_SIMULADOS[idx]?.mama);
+  if (fi === -1 || ti === -1) { dragDisenoCI = null; return; }
+  ids.splice(fi,1); ids.splice(ti,0,PEDIDOS_ANGIE_SIMULADOS[dragDisenoCI].bebe+PEDIDOS_ANGIE_SIMULADOS[dragDisenoCI].mama);
+  ordenDisenoD = ids;
+  localStorage.setItem('eq_orden_diseno', JSON.stringify(ordenDisenoD));
+  dragDisenoCI = null;
+  renderDiseno();
+}
+
+// ── NUMERO DE PEDIDO EDITABLE ──
+function editarNumPedidoD(pidx, oi, el) {
+  const actual = PEDIDOS_ANGIE_SIMULADOS[pidx].prods[oi].numPedido || '';
+  const inp = document.createElement('input');
+  inp.className = 'nped-inp';
+  inp.value = actual;
+  inp.placeholder = '#';
+  el.replaceWith(inp);
+  inp.focus(); inp.select();
+  const guardar = () => {
+    const val = inp.value.trim();
+    PEDIDOS_ANGIE_SIMULADOS[pidx].prods[oi].numPedido = val;
+    if (typeof window.__angieSave === 'function') window.__angieSave(PEDIDOS_ANGIE_SIMULADOS);
+    renderDiseno();
+  };
+  inp.addEventListener('blur', guardar);
+  inp.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();inp.blur();} if(e.key==='Escape')inp.blur(); });
+}
+
+// ── MODAL PRODUCTO (idéntico a Picabú App) ──
+let pmEditD = null;
+function abrirPModalD(pidx, oi) {
+  pmEditD = {pidx, oi};
+  const p = PEDIDOS_ANGIE_SIMULADOS[pidx];
+  const x = p.prods[oi];
+  document.getElementById('pmd-titulo').textContent = x.nombre || '';
+  document.getElementById('pmd-sub').textContent = (p.bebe||'') + ' · ' + (p.mama||'');
+  document.getElementById('pmd-nota').value = x.nota || '';
+  document.getElementById('pmd-proveedor').value = x.proveedor || '';
+  const fechaBox = document.getElementById('pmd-fecha-box');
+  const fechaVal = document.getElementById('pmd-fecha-val');
+  if (x.ultimoCambio || x.estado) {
+    const dias = daysSince(x.ultimoCambio || p.fecha);
+    fechaBox.style.display = 'block';
+    fechaVal.textContent = (x.ultimoCambio || p.fecha || '—') + ' · ' + dias + ' día' + (dias!==1?'s':'');
+    fechaVal.style.color = dias >= getDias() ? '#9a6400' : 'var(--text)';
+  } else {
+    fechaBox.style.display = 'none';
+  }
+  document.getElementById('modal-prod-d').classList.add('open');
+}
+function cerrarPModalD() { document.getElementById('modal-prod-d').classList.remove('open'); pmEditD = null; }
+function guardarPModalD() {
+  if (!pmEditD) return;
+  const {pidx, oi} = pmEditD;
+  PEDIDOS_ANGIE_SIMULADOS[pidx].prods[oi].nota = document.getElementById('pmd-nota').value.trim();
+  PEDIDOS_ANGIE_SIMULADOS[pidx].prods[oi].proveedor = document.getElementById('pmd-proveedor').value.trim();
+  if (typeof window.__angieSave === 'function') window.__angieSave(PEDIDOS_ANGIE_SIMULADOS);
+  cerrarPModalD();
+  renderDiseno();
+}
+
+const fichaIcon = `<svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><line x1="3.5" y1="4.5" x2="10.5" y2="4.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>`;
+
 function disenoCardHtml(p, idx) {
   const pagoClass = p.pago === 'Pagado' ? 'pago-pagado' : p.pago === 'Saldo pendiente' ? 'pago-saldo' : 'pago-vacio';
   const pagoLabel = p.pago || 'Estado pago';
-  const prodsActivos = (p.prods || []).map((x,i) => ({...x, _oi:i})).filter(x => x.estado !== 'Entregado');
 
-  const fichaIcon = `<svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><line x1="3.5" y1="4.5" x2="10.5" y2="4.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>`;
+  // Filtrar como picabú: ocultar soloWA (fotos extras) y plantillas; deduplicar cantIdx
+  const vistos = new Set();
+  const prodsVisibles = (p.prods||[]).map((x,i)=>({...x,_oi:i})).filter(x => {
+    if (x.soloWA) return false;                         // fotos extras: ocultar en Diseño
+    if (esPlantillaD(x.nombre)) return false;           // plantillas: se consolidan en fotolibro
+    if (x.estado === 'Entregado') return false;
+    if (x.cantIdx !== undefined) return x.cantIdx === 0;
+    if (vistos.has(x.nombre)) return false;
+    vistos.add(x.nombre); return true;
+  });
 
-  const prodsHtml = prodsActivos.map(x => {
+  const prodsHtml = prodsVisibles.map(x => {
     const cantBadge = (x.cantTotal && x.cantTotal > 1 && x.cantIdx === 0)
       ? `<span style="background:#7f6d67;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:600;flex-shrink:0;">×${x.cantTotal}</span>` : '';
-    const ntagHtml = x.numPedido
-      ? `<span class="nped-tag filled">#${x.numPedido}</span>`
-      : `<span class="nped-tag">···</span>`;
+    const nped = x.numPedido || '';
+    const ntagHtml = nped
+      ? `<span class="nped-tag filled" onclick="event.stopPropagation();editarNumPedidoD(${idx},${x._oi},this)" title="Editar número de pedido">#${nped}</span>`
+      : `<span class="nped-tag" onclick="event.stopPropagation();editarNumPedidoD(${idx},${x._oi},this)" title="Agregar número de pedido">···</span>`;
     const _btnStyle = estadoStyleD(x.estado);
     const _epopId = `epop-${idx}-${x._oi}`;
     const estadoHtml = x.estado
       ? `<button class="estado-btn" style="${_btnStyle}" onclick="event.stopPropagation();toggleEstadoD(${idx},${x._oi})">${x.estado}</button>
-         <div class="estado-pop" id="${_epopId}">
-           <input class="estado-pop-inp" placeholder="Buscar estado..." oninput="fillEstadoOptsD(${idx},${x._oi},this.value)">
-           <div class="estado-opts"></div>
-         </div>`
+         <div class="estado-pop" id="${_epopId}"><input class="estado-pop-inp" placeholder="Buscar estado..." oninput="fillEstadoOptsD(${idx},${x._oi},this.value)"><div class="estado-opts"></div></div>`
       : `<button class="estado-empty-btn" onclick="event.stopPropagation();toggleEstadoD(${idx},${x._oi})">+ estado</button>
-         <div class="estado-pop" id="${_epopId}">
-           <input class="estado-pop-inp" placeholder="Buscar estado..." oninput="fillEstadoOptsD(${idx},${x._oi},this.value)">
-           <div class="estado-opts"></div>
-         </div>`;
+         <div class="estado-pop" id="${_epopId}"><input class="estado-pop-inp" placeholder="Buscar estado..." oninput="fillEstadoOptsD(${idx},${x._oi},this.value)"><div class="estado-opts"></div></div>`;
+    // Nombre: fotolibro con páginas de plantillas sumadas + badge
+    const nombreMostrar = nombreDisenoD(p, x);
+    const esTraducido = nombreMostrar !== (x.nombre||'');
+    const nombreHtml = esTraducido
+      ? `<div class="prod-nombre-edit" style="cursor:default;" title="${(x.nombre||'').replace(/"/g,'&quot;')} + plantillas">${nombreMostrar}<span style="font-style:italic;color:var(--muted);font-size:10px;margin-left:7px;font-weight:400;">plantilla de datos</span></div>`
+      : `<input class="prod-nombre-edit" value="${(x.nombre||'').replace(/"/g,'&quot;')}" onblur="guardarNombreProdD(${idx},${x._oi},this.value)" onclick="event.stopPropagation()">`;
+    const fichaTiene = !!x.proveedor;
+    const fichaBtn = `<button class="ficha-btn${fichaTiene?' ficha-btn-ok':''}" onclick="event.stopPropagation();abrirPModalD(${idx},${x._oi})" title="${fichaTiene?'Proveedor: '+x.proveedor:'Sin proveedor asignado'}">${fichaIcon}</button>`;
     return `<div class="prod-row">
       <span class="prod-drag">⠿</span>
-      <button class="ficha-btn" onclick="abrirFichaDiseno(${idx})" title="Ver ficha">${fichaIcon}</button>
-      <div class="prod-nombre">${x.nombre||''}</div>
+      ${fichaBtn}
+      ${nombreHtml}
       ${cantBadge}
       <div class="nota-ico">${x.nota?'📝':''}</div>
       <div class="estado-wrap">${estadoHtml}</div>
@@ -1624,8 +1785,12 @@ function disenoCardHtml(p, idx) {
     </div>`;
   }).join('') || `<div style="font-size:12px;color:var(--muted);padding:8px 0;">Sin productos activos</div>`;
 
-  return `<div class="c-card">
+  return `<div class="c-card" id="dcard-${idx}" draggable="false"
+    ondragover="onDragOverClienteD(event,${idx})"
+    ondrop="onDropClienteD(event,${idx})"
+    ondragleave="this.classList.remove('drag-over')">
     <div class="c-header">
+      <span class="drag-handle" draggable="true" ondragstart="onDragStartClienteD(event,${idx})" style="opacity:0.4;">⠿</span>
       <div style="flex:1;min-width:0;">
         <div><span class="c-nombre">${p.bebe}</span><span class="c-mama">${p.mama||''}</span></div>
         ${p.notas ? `<div class="c-meta">📌 ${p.notas}</div>` : ''}
@@ -1639,6 +1804,13 @@ function disenoCardHtml(p, idx) {
       <span id="dsync-${idx}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${disenoSyncHtml()}</span>
     </div>
   </div>`;
+}
+
+function guardarNombreProdD(pidx, oi, val) {
+  if (val.trim()) {
+    PEDIDOS_ANGIE_SIMULADOS[pidx].prods[oi].nombre = val.trim();
+    if (typeof window.__angieSave === 'function') window.__angieSave(PEDIDOS_ANGIE_SIMULADOS);
+  }
 }
 
 
@@ -1708,35 +1880,6 @@ function cambiarEstadoDiseno(pidx, eidx, nuevoEstado) {
   renderDiseno();
 }
 
-function abrirFichaDiseno(pidx) {
-  const p = PEDIDOS_ANGIE_SIMULADOS[pidx];
-  if (!p) return;
-  document.getElementById('ficha-d-titulo').textContent = p.bebe || '—';
-  document.getElementById('ficha-d-sub').textContent = p.mama || '';
-  const pagoClass = p.pago === 'Pagado' ? 'pago-pagado' : p.pago === 'Saldo pendiente' ? 'pago-saldo' : 'pago-vacio';
-  let html = '';
-  if (p.fechaSesion) html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">📅 Sesión: ${fmt(p.fechaSesion)}</div>`;
-  if (p.notas) html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">📌 ${p.notas}</div>`;
-  html += '<div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px;">Productos</div>';
-  (p.prods || []).forEach(x => {
-    const col = (ESTADOS_D.find(e => e.nombre === x.estado)||{color:'#f0efed'}).color;
-    html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
-      <div style="flex:1;font-size:13px;">${x.nombre||'—'}</div>
-      ${x.nota ? `<span style="font-size:11px;color:var(--muted);">📝 ${x.nota}</span>` : ''}
-      <span style="background:${col};color:var(--marron-d);padding:3px 10px;border-radius:10px;font-size:10px;font-weight:600;">${x.estado||'—'}</span>
-    </div>`;
-  });
-  html += `<div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
-    <span style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;">Pago</span>
-    <span class="${pagoClass} pago-sel">${p.pago||'—'}</span>
-  </div>`;
-  document.getElementById('ficha-d-body').innerHTML = html;
-  document.getElementById('modal-ficha-d').style.display = 'block';
-}
-
-function cerrarFichaDiseno() {
-  document.getElementById('modal-ficha-d').style.display = 'none';
-}
 
 // ─── RENDER CONFIG ────────────────────────────────────────────
 function renderConfig() {
@@ -1990,76 +2133,104 @@ function renderStats() {
 function renderDiseno() {
   const el = document.getElementById('diseno-container');
   const todos = PEDIDOS_ANGIE_SIMULADOS.filter(p => (p.prods||[]).some(x => x.estado !== 'Entregado'));
-  const listos   = todos.filter(p => p.prods.filter(x=>x.estado!=='Entregado').every(x => x.estado === 'Listo en estudio'));
-  const parciales = todos.filter(p => !listos.includes(p));
+  const todosTodos = getDisenoOrdenado(todos);
+  const listos   = todosTodos.filter(p => {
+    const vis = p.prods.filter(x=>x.estado!=='Entregado'&&!x.soloWA&&!esPlantillaD(x.nombre));
+    if (!vis.length || !vis.every(x => x.estado === 'Listo en estudio')) return false;
+    // Solo "coordinar entrega" si el video ya está resuelto (hecho o sin video)
+    const c = clientes.find(cl => cl.mama && cl.mama.toLowerCase()===(p.mama||'').toLowerCase() && cl.bebe && cl.bebe.toLowerCase().includes((p.bebe||'').toLowerCase()));
+    return !c || c.tareaVideoHecho === true || c.sinVideo === true || c.videoSinGrabar === true;
+  });
+  const parciales = todosTodos.filter(p => !listos.includes(p));
 
   // Alertas: sin respuesta (estados de alerta)
   const alertasSeg = {};
-  todos.forEach(p => {
+  todosTodos.forEach(p => {
     (p.prods||[]).forEach(x => {
       if (ESTADOS_ALERTA_D.includes(x.estado)) {
-        const k = `${p.bebe} · ${p.mama}`;
-        if (!alertasSeg[k]) alertasSeg[k] = [];
-        alertasSeg[k].push(x);
+        const d = daysSince(x.ultimoCambio || p.fecha);
+        if (d >= getDias()) {
+          const k = `${p.bebe} · ${p.mama}`;
+          if (!alertasSeg[k]) alertasSeg[k] = [];
+          alertasSeg[k].push({prod:x.nombre, estado:x.estado, dias:d});
+        }
       }
     });
   });
 
-  // Alertas: coordinar entrega (todos listos — igual que Picabú App)
+  // Alertas: coordinar entrega con contactados (idéntico a Picabú App)
   const alertasEnt = {};
   listos.forEach(p => {
     const k = `${p.bebe} · ${p.mama}`;
     alertasEnt[k] = { tieneSaldo: p.pago === 'Saldo pendiente' };
   });
 
+  const contactados = getContactados();
+  const DIAS_SEG = getDias();
+  const ahora = Date.now();
+  const MS_2DIAS = DIAS_SEG * 24 * 60 * 60 * 1000;
+  const keysEnt = Object.keys(alertasEnt);
+  const pendientesEnt = keysEnt.filter(k => !contactados[k]);
+  const seguimientoSaldo = keysEnt.filter(k => {
+    const c = contactados[k];
+    if (!c || !c.ts) return false;
+    if (!alertasEnt[k].tieneSaldo) return false;
+    return (ahora - c.ts) >= MS_2DIAS;
+  });
+
   let html = '';
 
-  // Bandeja alertas (igual que renderDiseno de Picabú App)
+  // Bandeja alertas (idéntica a Picabú App)
   const keysSeg = Object.keys(alertasSeg);
-  const keysEnt = Object.keys(alertasEnt);
-  if (keysSeg.length || keysEnt.length) {
+  const hayAlertas = keysSeg.length || pendientesEnt.length || seguimientoSaldo.length;
+  if (hayAlertas) {
     html += `<div class="alertas-wrap">`;
     if (keysSeg.length) {
       html += `<div class="alert-box">
         <div class="alert-title">Sin respuesta del cliente</div>
         ${keysSeg.map(k=>`<div class="alert-grupo">
           <div class="alert-cliente">${k}</div>
-          ${alertasSeg[k].map(x=>`<div class="alert-item">
-            <span class="alert-prod">${x.nombre}</span>
-            <span class="alert-badge">${x.estado}</span>
+          ${alertasSeg[k].map(a=>`<div class="alert-item">
+            <span class="alert-prod">${a.prod}</span>
+            <span class="alert-badge">${a.estado}</span>
+            <span style="font-size:10px;color:#a05050;flex-shrink:0;">${a.dias}d</span>
           </div>`).join('')}
         </div>`).join('')}
       </div>`;
     }
-    if (keysEnt.length) {
-      html += `<div class="alert-box">
-        <div class="alert-title">Coordinar entrega</div>
-        ${keysEnt.map(k=>`<div class="alert-grupo">
-          <div class="alert-cliente">${k}</div>
-          ${alertasEnt[k].tieneSaldo ? `<div style="font-size:11px;color:#a05050;margin-top:2px;">⚠ Saldo pendiente</div>` : ''}
-        </div>`).join('')}
-      </div>`;
+    if (pendientesEnt.length || seguimientoSaldo.length) {
+      html += `<div class="alert-box">`;
+      if (pendientesEnt.length) {
+        html += `<div class="alert-title">Coordinar entrega</div>
+        ${pendientesEnt.map(k=>`<div class="alert-grupo" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" onchange="marcarContactado('${k.replace(/'/g,"\\'")}',this.checked)" style="accent-color:var(--marron);width:15px;height:15px;cursor:pointer;flex-shrink:0;">
+          <div class="alert-cliente" style="margin:0;">${k}</div>
+        </div>`).join('')}`;
+      }
+      if (seguimientoSaldo.length) {
+        html += `${pendientesEnt.length ? '<div style="margin-top:10px;border-top:1px solid #e8c5c5;padding-top:10px;"></div>' : ''}
+        <div class="alert-title" style="color:#a05050;">⏰ Seguimiento — tiene saldo pendiente</div>
+        ${seguimientoSaldo.map(k => {
+          const c = contactados[k];
+          const dp = Math.floor((ahora - c.ts) / (24*60*60*1000));
+          return `<div class="alert-grupo" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" onchange="marcarContactado('${k.replace(/'/g,"\\'")}',this.checked)" style="accent-color:var(--marron);width:15px;height:15px;cursor:pointer;flex-shrink:0;">
+            <div style="flex:1;">
+              <div class="alert-cliente" style="margin:0;">${k}</div>
+              <div style="font-size:10px;color:#a05050;margin-top:2px;">Hace ${dp} día${dp!==1?'s':''} sin actualización · volvé a contactar</div>
+            </div>
+          </div>`;
+        }).join('')}`;
+      }
+      html += `</div>`;
     }
     html += `</div>`;
   }
 
-  if (listos.length) {
-    html += `<div class="seccion-header" style="margin-top:4px;">
-      <span class="seccion-titulo">Listos para retirar</span>
-      <span class="count-badge">${listos.length}</span>
-    </div>`;
-    html += listos.map(p => disenoCardHtml(p, PEDIDOS_ANGIE_SIMULADOS.indexOf(p))).join('');
-  }
-
-  if (parciales.length) {
-    html += `<div class="seccion-header" style="margin-top:${listos.length ? '20px' : '4px'};">
-      <span class="seccion-titulo">En proceso</span>
-      <span class="count-badge">${parciales.length}</span>
-    </div>`;
-    html += parciales.map(p => disenoCardHtml(p, PEDIDOS_ANGIE_SIMULADOS.indexOf(p))).join('');
-  }
-
-  if (!todos.length) {
+  // Lista plana sin agrupamiento (idéntico a Picabú App)
+  if (todosTodos.length) {
+    html += todosTodos.map(p => disenoCardHtml(p, PEDIDOS_ANGIE_SIMULADOS.indexOf(p))).join('');
+  } else {
     html = '<div class="empty">No hay productos activos en este momento.</div>';
   }
 
@@ -2093,14 +2264,24 @@ const REF_ANGIE = doc(db, 'picabu', 'pedidos');
 // ── LECTURA/ESCRITURA: sesiones de Renu — colección separada ──────
 const REF_RENU = doc(db, 'equipo', 'sesiones');
 
-// Escuchar pedidos de Angie (read-only) — siempre llama __angieUpdate aunque no haya datos
+// Escuchar pedidos de Angie + contactados
 onSnapshot(REF_ANGIE, snap => {
   const d = snap.exists() ? snap.data() : {};
   console.log('[Equipo] picabu/pedidos recibido:', snap.exists(), 'lista:', d.lista?.length ?? 'sin lista');
   if (typeof window.__angieUpdate === 'function') window.__angieUpdate(d.lista || [], d.updated || null);
+  // Sync contactados
+  if (d.contactados !== undefined) {
+    if (typeof window.setContactadosFromFirebase === 'function') window.setContactadosFromFirebase(d.contactados);
+  }
 }, err => {
   console.error('[Equipo] Error leyendo picabu/pedidos:', err.code, err.message);
 });
+
+// Guardar contactados en Firebase (merge para no pisar la lista de Angie)
+window.saveContactadosToFirebase = async function(contactados) {
+  try { await setDoc(REF_ANGIE, { contactados, updated: new Date().toISOString() }, { merge: true }); }
+  catch(e) { console.warn('Firebase contactados equipo:', e); }
+};
 
 // Escuchar sesiones de Renu
 onSnapshot(REF_RENU, snap => {
@@ -2114,7 +2295,8 @@ onSnapshot(REF_RENU, snap => {
 // Guardar sesiones de Renu (llamado desde marcarCambio)
 window.__angieSave = async function(lista) {
   const clean = JSON.parse(JSON.stringify(lista, (k, v) => v === undefined ? null : v));
-  await setDoc(REF_ANGIE, { lista: clean, updated: new Date().toISOString() });
+  const contactados = (() => { try { return JSON.parse(localStorage.getItem('picabu_contactados')||'{}'); } catch(e) { return {}; } })();
+  await setDoc(REF_ANGIE, { lista: clean, contactados, updated: new Date().toISOString() });
 };
 
 window.__renuSave = async function(data) {
@@ -2123,13 +2305,31 @@ window.__renuSave = async function(data) {
 };
 </script>
 
-<div class="overlay" id="modal-ficha-d" onclick="if(event.target===this)cerrarFichaDiseno()">
+<div class="overlay" id="modal-prod-d" onclick="if(event.target===this)cerrarPModalD()">
   <div class="mbox">
-    <div class="mbox-title" id="ficha-d-titulo"></div>
-    <div class="mbox-sub" id="ficha-d-sub"></div>
-    <div id="ficha-d-body" style="margin-top:12px;"></div>
+    <div class="mbox-title" id="pmd-titulo"></div>
+    <div class="mbox-sub" id="pmd-sub"></div>
+    <div id="pmd-fecha-box" style="display:none;" class="fecha-info">
+      <div class="fecha-info-label">Sin cambios desde</div>
+      <div class="fecha-info-val" id="pmd-fecha-val"></div>
+    </div>
+    <div class="fl">
+      <label>Proveedor</label>
+      <select id="pmd-proveedor" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-family:Montserrat,sans-serif;font-size:13px;background:var(--white);color:var(--text);cursor:pointer;">
+        <option value="">— Sin asignar —</option>
+        <option value="COPY">COPY</option>
+        <option value="CLICK">CLICK</option>
+        <option value="B612">B612</option>
+        <option value="Otros">Otros</option>
+      </select>
+    </div>
+    <div class="fl">
+      <label>Notas</label>
+      <textarea id="pmd-nota" rows="10" placeholder="Detalles, pendientes, datos del cliente..."></textarea>
+    </div>
     <div class="mbox-btns">
-      <button class="btn-sec" onclick="cerrarFichaDiseno()">Cerrar</button>
+      <button class="btn-sec" onclick="cerrarPModalD()">Cancelar</button>
+      <button class="btn-pri" onclick="guardarPModalD()">Guardar</button>
     </div>
   </div>
 </div>
