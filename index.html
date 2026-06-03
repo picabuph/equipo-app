@@ -618,6 +618,8 @@ function reintentarTodos() {
 let _ignorarSnapshotRenu = false;
 let _fbAngieConectado = false;
 let _angieLastSync = { ts: null, tsStr: '' };
+let _fbConectadaTs = null; // última vez que Firebase respondió (cualquier documento)
+let _lastSaveTs = null; // última vez que SE GUARDÓ algo (cualquier dato)
 let _terminadosOpen = localStorage.getItem('eq_terminados_open') !== 'false';
 function toggleTerminados() {
   _terminadosOpen = !_terminadosOpen;
@@ -649,6 +651,7 @@ setTimeout(function() {
 window.__angieUpdate = function(lista, updated) {
   PEDIDOS_ANGIE_SIMULADOS.splice(0, PEDIDOS_ANGIE_SIMULADOS.length, ...lista);
   _fbAngieConectado = true;
+  _fbConectadaTs = new Date(); // marca conexión activa
   const ts = updated ? new Date(updated) : new Date();
   _angieLastSync = {
     ts: ts.getTime(),
@@ -662,6 +665,7 @@ window.__angieUpdate = function(lista, updated) {
 // Callback: sesiones de Renu llegan desde Firebase
 window.__renuLoad = function(lista) {
   if (_ignorarSnapshotRenu) { _ignorarSnapshotRenu = false; return; }
+  _fbConectadaTs = new Date(); // marca conexión activa
   if (lista && lista.length) {
     clientes.splice(0, clientes.length, ...lista);
     autoSync();
@@ -957,9 +961,16 @@ function renderApp() {
   let html = '';
 
   // Sync bar
-  const syncTxt = _angieLastSync.tsStr
-    ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#7aaa8a;margin-right:4px;vertical-align:middle;"></span>Sincronizado ${_angieLastSync.tsStr}`
-    : `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ccc;margin-right:4px;vertical-align:middle;"></span>Conectando con Firebase...`;
+  const _fmtSave = d => {
+    const hoy = new Date(); const mismodia = d.getDate()===hoy.getDate()&&d.getMonth()===hoy.getMonth()&&d.getFullYear()===hoy.getFullYear();
+    const hora = d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+    return mismodia ? `hoy ${hora}` : `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${hora}`;
+  };
+  const syncTxt = _lastSaveTs
+    ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#7aaa8a;margin-right:4px;vertical-align:middle;"></span>Guardado ${_fmtSave(_lastSaveTs)}`
+    : !_fbConectadaTs
+      ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ccc;margin-right:4px;vertical-align:middle;"></span>Conectando...`
+      : `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#7aaa8a;margin-right:4px;vertical-align:middle;"></span>Sin cambios`;
   html += `<div style="font-size:10px;color:var(--muted);text-align:right;padding:0 2px 8px;letter-spacing:0.3px;">${syncTxt}</div>`;
 
   if (!clientes.length) {
@@ -2279,8 +2290,10 @@ onSnapshot(REF_ANGIE, snap => {
 
 // Guardar contactados en Firebase (merge para no pisar la lista de Angie)
 window.saveContactadosToFirebase = async function(contactados) {
-  try { await setDoc(REF_ANGIE, { contactados, updated: new Date().toISOString() }, { merge: true }); }
-  catch(e) { console.warn('Firebase contactados equipo:', e); }
+  try {
+    await setDoc(REF_ANGIE, { contactados, updated: new Date().toISOString() }, { merge: true });
+    _lastSaveTs = new Date(); renderApp();
+  } catch(e) { console.warn('Firebase contactados equipo:', e); }
 };
 
 // Escuchar sesiones de Renu
@@ -2297,11 +2310,13 @@ window.__angieSave = async function(lista) {
   const clean = JSON.parse(JSON.stringify(lista, (k, v) => v === undefined ? null : v));
   const contactados = (() => { try { return JSON.parse(localStorage.getItem('picabu_contactados')||'{}'); } catch(e) { return {}; } })();
   await setDoc(REF_ANGIE, { lista: clean, contactados, updated: new Date().toISOString() });
+  _lastSaveTs = new Date();
 };
 
 window.__renuSave = async function(data) {
   const clean = JSON.parse(JSON.stringify(data, (k, v) => v === undefined ? null : v));
   await setDoc(REF_RENU, { lista: clean, updated: new Date().toISOString() });
+  _lastSaveTs = new Date();
 };
 </script>
 
