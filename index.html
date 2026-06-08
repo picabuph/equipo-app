@@ -52,6 +52,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .c-bebe { font-family:'Yeseva One',serif; font-size:15px; color:var(--marron-d); display:flex; align-items:center; gap:6px; }
 .drag-handle { color:var(--muted); font-size:13px; cursor:grab; opacity:0.35; user-select:none; flex-shrink:0; }
 .drag-handle:active { cursor:grabbing; }
+.c-card.drag-active { outline:2px solid var(--rosa-d); outline-offset:2px; opacity:0.75; }
+.c-card.drag-over { border-top:3px solid var(--rosa) !important; }
 .c-mama { font-size:11px; color:var(--muted); margin-top:1px; }
 .c-badges { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:3px; }
 .badge-prod { font-size:9px; background:#fde8b0; color:#7a5200; padding:1px 7px; border-radius:20px; font-weight:600; letter-spacing:1px; text-transform:uppercase; }
@@ -543,13 +545,51 @@ let confirmandoIdx = null;
 let mostrarEntregadas = false;
 let dragSrcId = null;
 let ordenEdicion = [];
-let ordenTodas = JSON.parse(localStorage.getItem('eq_orden_todas')||'[]');
+let ordenTodas = []; // no persiste — siempre auto-sort al recargar, manual solo en sesión
+
+// Estado terminado (extraído para usar fuera de renderApp)
+function estaTerminadoFn(c) {
+  if (c.estado !== 'subidas') return false;
+  if (c.tieneProductos && !c.tareaVideoDisparada) return false;
+  if (c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar) return false;
+  return true;
+}
+
+// Auto-sort: grupos por estado, dentro de cada grupo por fecha más próxima
+const _ESTADO_PRIO = { edicion_renu:0, edicion_terminada:1, para_subir:2, subidas:3, pendiente_cliente:4, galeria_pendiente:5 };
+function _fechaSort(c) {
+  if (c.fechaLimite) return c.fechaLimite;
+  if (c.fechaConfirmacion) return c.fechaConfirmacion;
+  if (c.fechaEnvioGaleria) return c.fechaEnvioGaleria;
+  if (c.fechaSesion) return c.fechaSesion;
+  return '9999-99-99';
+}
+function sortPorPrioridad(lista) {
+  return [...lista].sort((a, b) => {
+    const pa = _ESTADO_PRIO[a.estado] ?? 9, pb = _ESTADO_PRIO[b.estado] ?? 9;
+    if (pa !== pb) return pa - pb;
+    return _fechaSort(a).localeCompare(_fechaSort(b));
+  });
+}
+
 function getActivasOrdenadas(activas) {
-  if (!ordenTodas.length) return sortPorFechaSesion(activas);
+  if (!ordenTodas.length) return sortPorPrioridad(activas);
   const ordered = [];
   ordenTodas.forEach(id => { const c = activas.find(x => x.id === id); if (c) ordered.push(c); });
   activas.forEach(c => { if (!ordenTodas.includes(c.id)) ordered.push(c); });
   return ordered;
+}
+
+// Drop compartido (desktop + touch)
+function _performDrop(srcId, tgtId) {
+  if (!srcId || srcId === tgtId) return;
+  const activas = getActivasOrdenadas(clientes.filter(c => !estaTerminadoFn(c)));
+  const ids = activas.map(c => c.id);
+  const si = ids.indexOf(srcId), ti = ids.indexOf(tgtId);
+  if (si === -1 || ti === -1) return;
+  ids.splice(si, 1); ids.splice(ti, 0, srcId);
+  ordenTodas = ids; // solo en memoria
+  renderApp();
 }
 
 // ─── SYNC (diseñado para Firebase — igual que picabu app) ─────
@@ -940,18 +980,8 @@ function getEdicionOrdenada() {
 function renderApp() {
   const app = document.getElementById('app');
 
-  // Trabajo terminado = subidas + video resuelto + sin productos pendientes de entrega
-  const estaTerminado = c => {
-    if (c.estado !== 'subidas') return false;
-    // Tiene productos pero la tarea de video todavía no se disparó → productos aún en producción
-    if (c.tieneProductos && !c.tareaVideoDisparada) return false;
-    // Video pendiente sin resolver → esperar decisión
-    if (c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar) return false;
-    return true;
-  };
-
-  const activas = getActivasOrdenadas(clientes.filter(c => !estaTerminado(c)));
-  const trabajosTerminados = clientes.filter(c => estaTerminado(c));
+  const activas = getActivasOrdenadas(clientes.filter(c => !estaTerminadoFn(c)));
+  const trabajosTerminados = clientes.filter(c => estaTerminadoFn(c));
 
   // Alerta sin respuesta (sigue mostrándose arriba)
   const alertas15 = clientes.filter(c =>
@@ -1001,13 +1031,14 @@ function renderApp() {
   app.innerHTML = html;
   actualizarBandeja();
 
-  // Drag listeners para todas las cards
+  // Drag listeners — desktop (HTML5) + mobile (touch long-press)
   app.querySelectorAll('.c-card').forEach(el => {
     el.addEventListener('dragstart', onDragStart);
     el.addEventListener('dragover', onDragOver);
     el.addEventListener('drop', onDrop);
     el.addEventListener('dragend', onDragEnd);
   });
+  initTouchDrag(app);
 }
 
 function estadoSelectHtml(idx, estadoActual) {
@@ -1161,29 +1192,77 @@ function onDragOver(e) {
 }
 function onDrop(e) {
   e.preventDefault();
-  const targetId = e.currentTarget.dataset.id;
-  if (!dragSrcId || dragSrcId === targetId) return;
-  const activas = getActivasOrdenadas(clientes.filter(c => {
-    if (c.estado !== 'subidas') return true;
-    if (c.tieneProductos && !c.tareaVideoDisparada) return true;
-    if (c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar) return true;
-    return false;
-  }));
-  const ids = activas.map(c => c.id);
-  const srcPos = ids.indexOf(dragSrcId);
-  const tgtPos = ids.indexOf(targetId);
-  if (srcPos === -1 || tgtPos === -1) return;
-  ids.splice(srcPos, 1);
-  ids.splice(tgtPos, 0, dragSrcId);
-  ordenTodas = ids;
-  localStorage.setItem('eq_orden_todas', JSON.stringify(ordenTodas));
-  renderApp();
+  _performDrop(dragSrcId, e.currentTarget.dataset.id);
+  dragSrcId = null;
 }
 function onDragEnd(e) {
   e.currentTarget.style.opacity = '';
   document.querySelectorAll('.c-card').forEach(el => el.classList.remove('drag-over'));
 }
 
+// ── TOUCH DRAG (long press en área en blanco o título) ──
+let _tdTimer = null, _tdCard = null, _tdActive = false, _tdSX = 0, _tdSY = 0;
+
+function initTouchDrag(container) {
+  container.addEventListener('touchstart', _tdStart, { passive: true });
+  container.addEventListener('touchmove', _tdMove, { passive: false });
+  container.addEventListener('touchend', _tdEnd);
+  container.addEventListener('touchcancel', _tdCancel);
+}
+
+function _tdStart(e) {
+  // Solo activar en área en blanco de la card o en el título — no en botones ni selects
+  const card = e.target.closest('.c-card');
+  if (!card) return;
+  if (e.target.closest('button,input,select,textarea,a,.estado-wrap,.estado-pop,.c-acciones,.badge-video,.ficha-btn,.eq-badge-video')) return;
+  _tdSX = e.touches[0].clientX; _tdSY = e.touches[0].clientY;
+  _tdCard = card;
+  _tdTimer = setTimeout(() => {
+    if (!_tdCard) return;
+    _tdActive = true;
+    _tdCard.classList.add('drag-active');
+    if (navigator.vibrate) navigator.vibrate(35);
+  }, 500);
+}
+
+function _tdMove(e) {
+  if (_tdTimer && !_tdActive) {
+    const dx = Math.abs(e.touches[0].clientX - _tdSX);
+    const dy = Math.abs(e.touches[0].clientY - _tdSY);
+    if (dx > 8 || dy > 8) { clearTimeout(_tdTimer); _tdTimer = null; _tdCard = null; }
+    return;
+  }
+  if (!_tdActive || !_tdCard) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  _tdCard.style.visibility = 'hidden';
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  _tdCard.style.visibility = '';
+  document.querySelectorAll('.c-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+  const target = el?.closest('.c-card');
+  if (target && target !== _tdCard) target.classList.add('drag-over');
+}
+
+function _tdEnd(e) {
+  clearTimeout(_tdTimer); _tdTimer = null;
+  if (!_tdActive || !_tdCard) { _tdActive = false; _tdCard = null; return; }
+  const t = e.changedTouches[0];
+  _tdCard.style.visibility = 'hidden';
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  _tdCard.style.visibility = '';
+  _tdCard.classList.remove('drag-active');
+  document.querySelectorAll('.c-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+  const target = el?.closest('.c-card');
+  if (target && target !== _tdCard) _performDrop(_tdCard.dataset.id, target.dataset.id);
+  _tdActive = false; _tdCard = null;
+}
+
+function _tdCancel() {
+  clearTimeout(_tdTimer); _tdTimer = null;
+  if (_tdCard) _tdCard.classList.remove('drag-active');
+  document.querySelectorAll('.c-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+  _tdActive = false; _tdCard = null;
+}
 
 // ─── ACCIONES RÁPIDAS ─────────────────────────────────────────
 function marcarEnvioGaleria(idx) {
