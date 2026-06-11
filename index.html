@@ -525,6 +525,7 @@ function getConfig() {
 }
 function saveConfig(cfg) {
   localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+  if (window.__configSave) window.__configSave(cfg);
 }
 // ─── PAQUETES ─────────────────────────────────────────────────
 const PAQUETES = {
@@ -567,6 +568,8 @@ function estaTerminadoFn(c) {
 // Los builtins SIEMPRE usan este orden fijo — no puede ser roto por config/localStorage
 // 0=En edición | 1=Editadas | 2=Pendiente cliente | 3=Galería pendiente | 4=Subidas
 const _ESTADO_PRIO_DEFAULT = { edicion_renu:0, edicion_terminada:1, para_subir:1, pendiente_cliente:2, galeria_pendiente:3, subidas:4 };
+// Orden cronológico del flujo real — solo para el desplegable de cambio de estado
+const _ESTADO_WORKFLOW_ORDER = { galeria_pendiente:0, pendiente_cliente:1, edicion_renu:2, edicion_terminada:3, para_subir:4, subidas:5 };
 function _getEffectivePrio(estado) {
   // Builtins: siempre orden fijo
   if (_ESTADO_PRIO_DEFAULT[estado] !== undefined) return _ESTADO_PRIO_DEFAULT[estado];
@@ -963,8 +966,12 @@ function toggleEstadoPop(idx) {
 function fillEstadoPopOpts(idx, q) {
   const cont = document.getElementById(`epop-opts-${idx}`);
   if (!cont) return;
+  const wfPrio = s => _ESTADO_WORKFLOW_ORDER[s.id] !== undefined
+    ? _ESTADO_WORKFLOW_ORDER[s.id]
+    : (s.grupo && _ESTADO_WORKFLOW_ORDER[s.grupo] !== undefined ? _ESTADO_WORKFLOW_ORDER[s.grupo] + 0.5 : 99);
   cont.innerHTML = getEstadosEquipo()
     .filter(s => s.label.toLowerCase().includes((q||'').toLowerCase()))
+    .sort((a, b) => wfPrio(a) - wfPrio(b))
     .map(s => `<div class="estado-opt" onmousedown="selEstadoPop(${idx},'${s.id}')">
       <div class="estado-dot" style="background:${s.bg}"></div>${s.label}
     </div>`).join('');
@@ -2457,6 +2464,30 @@ const db = getFirestore(fbApp);
 const REF_ANGIE = doc(db, 'picabu', 'pedidos');
 // ── LECTURA/ESCRITURA: sesiones de Renu — colección separada ──────
 const REF_RENU = doc(db, 'equipo', 'sesiones');
+// ── LECTURA/ESCRITURA: config compartida — estados custom, overrides, orden ──
+const REF_CONFIG = doc(db, 'equipo', 'config');
+
+let _cfgSavedAt = 0;
+
+// Guardar config en Firestore (llamado desde saveConfig en el script principal)
+window.__configSave = async function(cfg) {
+  _cfgSavedAt = Date.now();
+  try {
+    await setDoc(REF_CONFIG, { ...cfg, _savedAt: _cfgSavedAt });
+  } catch(e) { console.warn('[config] sync error', e); }
+};
+
+// Escuchar cambios de config desde otros dispositivos
+onSnapshot(REF_CONFIG, snap => {
+  if (!snap.exists()) return;
+  const remote = snap.data();
+  const remoteTs = remote._savedAt || 0;
+  if (remoteTs <= _cfgSavedAt) return; // ya tenemos esta versión o más nueva
+  const { _savedAt, ...remoteCfg } = remote;
+  localStorage.setItem('equipo_config', JSON.stringify(remoteCfg));
+  inyectarEstilosCustom();
+  renderApp();
+}, err => console.warn('[config] snapshot error', err));
 
 // Escuchar pedidos de Angie + contactados
 onSnapshot(REF_ANGIE, snap => {
