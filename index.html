@@ -774,9 +774,10 @@ function calcLimite(fecha, dias = 30) {
 
 function diasDesde(f) {
   if (!f) return 0;
-  const d = new Date(f), h = new Date();
-  h.setHours(0,0,0,0); d.setHours(0,0,0,0);
-  return Math.floor((h - d) / 86400000);
+  const [y,m,d] = f.split('-').map(Number);
+  const fecha = new Date(y, m-1, d);
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  return Math.floor((hoy - fecha) / 86400000);
 }
 
 function diasHasta(f) {
@@ -1205,9 +1206,10 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
     if (c.estado === 'pendiente_cliente' && c.fechaEnvioGaleria) {
       const diasEsp = diasDesde(c.fechaEnvioGaleria);
       const espCol = diasEsp >= getConfig().diasAlertaSinRespuesta ? '#c94040' : diasEsp >= 7 ? '#e0a030' : '#5cad80';
+      const diasTxt = diasEsp === 0 ? 'hoy' : `hace ${diasEsp} ${diasEsp === 1 ? 'día' : 'días'}`;
       info += `<div class="c-info-item">
-        <span class="c-info-label">Galería enviada hace</span>
-        <span class="c-info-val" style="color:${espCol};font-weight:600;">${diasEsp} ${diasEsp === 1 ? 'día' : 'días'}</span>
+        <span class="c-info-label">Galería enviada</span>
+        <span class="c-info-val" style="color:${espCol};font-weight:600;">${diasTxt}</span>
       </div>`;
     }
   } else if (c.cantFotos) {
