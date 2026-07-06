@@ -35,7 +35,6 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .alerta-15 { background:#fef3e2; border:1px solid #f0c040; border-radius:10px; padding:12px 14px; margin-bottom:14px; }
 .alerta-15-titulo { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#9a6400; font-weight:600; margin-bottom:6px; }
 .alerta-15-item { font-size:12px; color:#7a5200; padding:3px 0; display:flex; align-items:center; gap:8px; }
-.alerta-15-item::before { content:'⚠️'; }
 
 .seccion-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; margin-top:4px; }
 .seccion-titulo { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); font-weight:600; margin:0; }
@@ -249,6 +248,13 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .stats-lista-nombre { flex:1; font-weight:500; color:var(--marron-d); }
 .stats-lista-dias { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--muted); }
 .stats-lista-dias strong { color:var(--text); font-size:13px; }
+.stats-tabla { background:var(--white); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.stats-header { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr 1.4fr; gap:0; padding:8px 14px; background:var(--arena-l); border-bottom:1px solid var(--border); font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); font-weight:700; }
+.stats-fila { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr 1.4fr; gap:0; padding:10px 14px; border-bottom:1px solid var(--arena-l); font-size:12px; align-items:center; }
+.stats-fila:last-child { border-bottom:none; }
+.stats-col-nombre { font-weight:500; color:var(--marron-d); }
+.stats-col-num { color:var(--text); font-weight:600; font-size:13px; }
+.stats-col-estado { font-size:11px; color:var(--muted); }
 </style>
 <script>
 (function(){
@@ -746,6 +752,7 @@ window.__renuLoad = function(lista) {
     clientes.splice(0, clientes.length, ...lista);
     _migrarFechasGaleria();
     autoSync();
+    _syncCalendarDates(); // si el calendario ya cargó, sincronizar fechas reprogramadas
     renderApp();
   }
 };
@@ -857,13 +864,22 @@ function autoSync() {
   let changed = false;
   PEDIDOS_ANGIE_SIMULADOS.forEach(pedido => {
     const _nb = s => (s||'').toLowerCase().trim();
-    const c = clientes.find(x => {
-      const pb = _nb(pedido.bebe), xb = _nb(x.bebe);
-      const bebeOk = pb === xb || xb.startsWith(pb + ' ') || pb.startsWith(xb + ' ');
-      return x.bebe && bebeOk && x.mama && _nb(x.mama) === _nb(pedido.mama);
+    const _pw = s => _nb(s).split(/[\s\-]/)[0];
+    const _ap = s => { const p = _nb(s).split(' '); return p.slice(1).join(' '); };
+    const bebeP = _pw(pedido.bebe);
+    const mamaNomP = _nb(pedido.mama).split(' ')[0];
+    const mamaApP = _ap(pedido.mama);
+    const matches = clientes.filter(x => {
+      if (!x.bebe || !x.mama) return false;
+      let score = 0;
+      if (bebeP && _pw(x.bebe) === bebeP) score++;
+      if (mamaNomP && _nb(x.mama).split(' ')[0] === mamaNomP) score++;
+      if (mamaApP && _ap(x.mama) === mamaApP) score++;
+      return score >= 2;
     });
+    const c = matches.length === 1 ? matches[0] : null;
     if (!c) return;
-    if (!c.tieneProductos) { c.tieneProductos = true; changed = true; }
+    if (!c.tieneProductos) { c.tieneProductos = true; marcarCambio(c.id); changed = true; }
     if (pedido.prods && pedido.prods.length > 0) {
       const estadosBlockeantes = ['Pendiente datos cliente', 'Pendiente diseño', 'Pendiente info', 'Pendiente info cliente'];
       const ningunoBloqueado = pedido.prods.length > 0 && !pedido.prods.some(p => estadosBlockeantes.includes(p.estado));
@@ -1024,6 +1040,20 @@ function inyectarEstilosCustom() {
   el.textContent = css;
 }
 
+let _eq_contactadosSR = (() => { try { return JSON.parse(localStorage.getItem('equipo_contactados_sr')||'{}'); } catch(e) { return {}; } })();
+function eq_getContactadosSR() { return _eq_contactadosSR; }
+window.__getContactadosSR = function() { return _eq_contactadosSR; };
+window.__loadContactadosSR = function(obj) {
+  _eq_contactadosSR = obj || {};
+  localStorage.setItem('equipo_contactados_sr', JSON.stringify(_eq_contactadosSR));
+};
+function eq_marcarContactado(id, checked) {
+  if (checked) _eq_contactadosSR[id] = { ts: Date.now() }; else delete _eq_contactadosSR[id];
+  localStorage.setItem('equipo_contactados_sr', JSON.stringify(_eq_contactadosSR));
+  if (typeof window.__guardarContactadosSR === 'function') window.__guardarContactadosSR(_eq_contactadosSR);
+  renderApp();
+}
+
 function cambiarEstadoInline(idx, nuevoEstado) {
   const c = clientes[idx];
   const estadoAnterior = c.estado;
@@ -1037,6 +1067,7 @@ function cambiarEstadoInline(idx, nuevoEstado) {
   }
   if (nuevoEstado === 'subidas') c.fechaSubida = hoy();
   if (nuevoEstado === 'pendiente_cliente' && !c.fechaEnvioGaleria) c.fechaEnvioGaleria = hoy();
+  c.fechaUltimoEstado = hoy();
   marcarCambio(c.id);
   renderApp();
 }
@@ -1067,9 +1098,12 @@ function renderApp() {
   const trabajosTerminados = clientes.filter(c => estaTerminadoFn(c));
 
   // Alerta sin respuesta (sigue mostrándose arriba)
-  const alertas15 = clientes.filter(c =>
-    c.estado === 'pendiente_cliente' && c.fechaEnvioGaleria && diasDesde(c.fechaEnvioGaleria) >= getConfig().diasAlertaSinRespuesta
-  );
+  const _eq_cont = eq_getContactadosSR();
+  const alertas15 = clientes.filter(c => {
+    if (!(c.estado === 'pendiente_cliente' && c.fechaEnvioGaleria && diasDesde(c.fechaEnvioGaleria) >= getConfig().diasAlertaSinRespuesta)) return false;
+    const cont = _eq_cont[c.id];
+    return !cont || (Date.now() - cont.ts) >= 48 * 3600 * 1000;
+  });
 
   let html = '';
 
@@ -1093,7 +1127,10 @@ function renderApp() {
   if (alertas15.length > 0) {
     html += `<div class="alerta-15">
       <div class="alerta-15-titulo">⚠ Sin respuesta — más de ${getConfig().diasAlertaSinRespuesta} días</div>
-      ${alertas15.map(c => `<div class="alerta-15-item">${c.bebe} (${c.mama}) — ${diasDesde(c.fechaEnvioGaleria)} días sin respuesta</div>`).join('')}
+      ${alertas15.map(c => `<div class="alerta-15-item">
+        <input type="checkbox" onchange="eq_marcarContactado('${c.id}',this.checked)" style="accent-color:#9a6400;width:14px;height:14px;cursor:pointer;flex-shrink:0;" title="Marcar como contactado (reaparece en 48h si no cambia el estado)">
+        <span>${c.bebe} (${c.mama}) — ${diasDesde(c.fechaEnvioGaleria)} días sin respuesta</span>
+      </div>`).join('')}
     </div>`;
   }
 
@@ -1415,6 +1452,7 @@ function confirmarFotos() {
   if (!fecha) { alert('Ingresá la fecha'); return; }
   c.estado = 'edicion_renu';
   c.fechaConfirmacion = fecha;
+  c.fechaUltimoEstado = fecha;
   c.fechaLimite = document.getElementById('cf-limite').value || calcLimite(fecha, 30);
   c.fechaLimite60 = document.getElementById('cf-limite60').value || calcLimite(fecha, 60);
   const cant = document.getElementById('cf-cant').value;
@@ -1425,13 +1463,14 @@ function confirmarFotos() {
 
 function marcarEdicionTerminada(idx) {
   clientes[idx].estado = 'para_subir';
-  // fechaLimite ya está calculada desde fechaConfirmacion (30 días desde que eligió las fotos)
+  clientes[idx].fechaUltimoEstado = hoy();
   marcarCambio(clientes[idx].id); renderApp();
 }
 
 function marcarSubidas(idx) {
   clientes[idx].estado = 'subidas';
   clientes[idx].fechaSubida = hoy();
+  clientes[idx].fechaUltimoEstado = hoy();
   clientes[idx].vista = false;
   marcarCambio(clientes[idx].id); renderApp();
 }
@@ -1469,7 +1508,9 @@ function marcarVista(idx) {
 
 function eliminarEntregada(idx) {
   if (!confirm(`¿Eliminar a ${clientes[idx].bebe} de la lista?`)) return;
-  const id = clientes[idx].id;
+  const c = clientes[idx];
+  if (typeof window.__guardarHistorial === 'function') window.__guardarHistorial([{ bebe:c.bebe, mama:c.mama, fechaSesion:c.fechaSesion||null, fechaEnvioGaleria:c.fechaEnvioGaleria||null, fechaConfirmacion:c.fechaConfirmacion||null, fechaSubida:c.fechaSubida||null, fechaEliminacion:hoy() }]);
+  const id = c.id;
   clientes.splice(idx, 1);
   marcarCambio(id);
   renderApp();
@@ -1478,15 +1519,15 @@ function eliminarEntregada(idx) {
 function eliminarTodosTerminados() {
   const estaTerminado = c => {
     if (c.estado !== 'subidas') return false;
-    // Tiene productos pero la tarea de video todavía no se disparó → productos aún en producción
     if (c.tieneProductos && !c.tareaVideoDisparada) return false;
-    // Video pendiente sin resolver → esperar decisión
     if (c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar) return false;
     return true;
   };
   const count = clientes.filter(estaTerminado).length;
   if (!count || !confirm(`¿Eliminar los ${count} trabajos terminados?`)) return;
-  const ids = clientes.filter(estaTerminado).map(c => c.id);
+  const terminados = clientes.filter(estaTerminado);
+  if (typeof window.__guardarHistorial === 'function') window.__guardarHistorial(terminados.map(c => ({ bebe:c.bebe, mama:c.mama, fechaSesion:c.fechaSesion||null, fechaEnvioGaleria:c.fechaEnvioGaleria||null, fechaConfirmacion:c.fechaConfirmacion||null, fechaSubida:c.fechaSubida||null, fechaEliminacion:hoy() })));
+  const ids = terminados.map(c => c.id);
   clientes = clientes.filter(c => !estaTerminado(c));
   ids.forEach(id => marcarCambio(id));
   renderApp();
@@ -1618,6 +1659,8 @@ function guardarCliente() {
 function eliminarCliente() {
   if (editandoIdx === null) return;
   if (!confirm(`¿Eliminar a ${clientes[editandoIdx].bebe}?`)) return;
+  const c = clientes[editandoIdx];
+  if (typeof window.__guardarHistorial === 'function') window.__guardarHistorial([{ bebe:c.bebe, mama:c.mama, fechaSesion:c.fechaSesion||null, fechaEnvioGaleria:c.fechaEnvioGaleria||null, fechaConfirmacion:c.fechaConfirmacion||null, fechaSubida:c.fechaSubida||null, fechaEliminacion:hoy() }]);
   clientes.splice(editandoIdx, 1);
   cerrarModal();
   renderApp();
@@ -1648,9 +1691,35 @@ function parseIcal(text) {
   return events;
 }
 let _icalCache = [];
+function _syncCalendarDates() {
+  if (!clientes.length || !_icalCache.length) return;
+  const norm = s => (s||'').toLowerCase().trim();
+  const nMatch = (a, b) => { const na=norm(a), nb=norm(b); if (!na||!nb) return false; return na===nb||na.includes(nb)||nb.includes(na); };
+  const hoyStr = hoy();
+  let huboUpdate = false;
+  _icalCache.forEach(ev => {
+    const p = parsearTexto(ev.summary);
+    if (!p.nombre || !p.mama) return;
+    // Solo actualizar sesiones en "próximas sesiones": galeria_pendiente con fecha futura (aún no ocurrió)
+    const c = clientes.find(cl =>
+      cl.estado === 'galeria_pendiente' && cl.fechaSesion >= hoyStr
+      && nMatch(cl.bebe, p.nombre) && nMatch(cl.mama, p.mama)
+      && cl.fechaSesion !== ev.fecha
+      && !clientes.some(c2 => c2 !== cl && c2.fechaSesion === ev.fecha && (nMatch(c2.bebe, p.nombre) || nMatch(c2.mama, p.mama)))
+    );
+    if (c) {
+      console.log(`[calendar] ${c.bebe}: fecha actualizada ${c.fechaSesion} → ${ev.fecha}`);
+      c.fechaSesion = ev.fecha;
+      marcarCambio(c.id);
+      huboUpdate = true;
+    }
+  });
+  if (huboUpdate) renderApp();
+}
+
 async function fetchCalendar() {
-  const el = document.getElementById('ical-sugerencias'); if (!el) return;
-  el.innerHTML = '<div style="font-size:11px;color:var(--muted);">Cargando...</div>';
+  const el = document.getElementById('ical-sugerencias');
+  if (el) el.innerHTML = '<div style="font-size:11px;color:var(--muted);">Cargando...</div>';
   const hoyStr = hoy();
   const lim = new Date(); lim.setDate(lim.getDate() + 30);
   const limStr = lim.toISOString().split('T')[0];
@@ -1666,6 +1735,7 @@ async function fetchCalendar() {
   const seen = new Set();
   eventos = eventos.filter(e => { const k = e.fecha+e.summary; if(seen.has(k))return false; seen.add(k); return true; });
   _icalCache = eventos;
+  _syncCalendarDates();
   renderIcalList();
 }
 function renderIcalList() {
@@ -1673,25 +1743,6 @@ function renderIcalList() {
   if (!_icalCache.length) { el.innerHTML = '<div style="font-size:11px;color:var(--muted);">No hay sesiones en los próximos 30 días.</div>'; return; }
   const norm = s => (s||'').toLowerCase().trim();
   const nMatch = (a, b) => { const na=norm(a), nb=norm(b); if (!na||!nb) return false; return na===nb||na.includes(nb)||nb.includes(na); };
-
-  // Auto-actualizar fecha de sesiones reprogramadas en el calendario
-  // Solo aplica si bebe Y mama coinciden, para evitar falsos positivos con nombres comunes
-  let huboUpdate = false;
-  _icalCache.forEach(ev => {
-    const p = parsearTexto(ev.summary);
-    if (!p.nombre || !p.mama) return; // requerir ambos nombres para seguridad
-    const c = clientes.find(cl =>
-      nMatch(cl.bebe, p.nombre) && nMatch(cl.mama, p.mama)
-      && cl.fechaSesion && cl.fechaSesion !== ev.fecha
-      && !clientes.some(c2 => c2 !== cl && c2.fechaSesion === ev.fecha && (nMatch(c2.bebe, p.nombre) || nMatch(c2.mama, p.mama)))
-    );
-    if (c) {
-      c.fechaSesion = ev.fecha;
-      marcarCambio(c.id);
-      huboUpdate = true;
-    }
-  });
-  if (huboUpdate) renderApp(); // actualizar vista de sesiones
 
   const pendientes = _icalCache.filter(ev => {
     const p = parsearTexto(ev.summary);
@@ -2313,63 +2364,88 @@ function _cfgDrop(e, targetId) {
 function renderStats() {
   function diffDias(f1, f2) {
     if (!f1 || !f2) return null;
-    return Math.round((new Date(f2) - new Date(f1)) / 86400000);
+    const [y1,m1,d1] = f1.split('-').map(Number);
+    const [y2,m2,d2] = f2.split('-').map(Number);
+    const diff = Math.round((new Date(y2,m2-1,d2) - new Date(y1,m1-1,d1)) / 86400000);
+    return diff >= 0 ? diff : null;
   }
   function avg(arr) { return arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null; }
   function minV(arr) { return arr.length ? Math.min(...arr) : null; }
   function maxV(arr) { return arr.length ? Math.max(...arr) : null; }
+  function fmtD(n) { return (n !== null && n !== undefined) ? `${n}d` : '—'; }
 
-  const todos = clientes.filter(c => c.fechaSubida);
-  const d_total   = todos.map(c => diffDias(c.fechaSesion, c.fechaSubida)).filter(d => d !== null && d >= 0);
-  const d_sesGal  = todos.map(c => diffDias(c.fechaSesion, c.fechaEnvioGaleria)).filter(d => d !== null && d >= 0);
-  const d_galConf = todos.map(c => diffDias(c.fechaEnvioGaleria, c.fechaConfirmacion)).filter(d => d !== null && d >= 0);
-  const d_confSub = todos.map(c => diffDias(c.fechaConfirmacion, c.fechaSubida)).filter(d => d !== null && d >= 0);
+  const historial = typeof window.__getHistorial === 'function' ? window.__getHistorial() : [];
+  const todas = [
+    ...clientes.map(c => ({ ...c, _activa: true })),
+    ...historial.map(h => ({ ...h, _activa: false }))
+  ];
 
-  function statCard(label, desc, arr) {
+  const d_sesGal  = todas.map(c => diffDias(c.fechaSesion, c.fechaEnvioGaleria)).filter(d => d !== null);
+  const d_galConf = todas.map(c => diffDias(c.fechaEnvioGaleria, c.fechaConfirmacion)).filter(d => d !== null);
+  const d_confSub = todas.map(c => diffDias(c.fechaConfirmacion, c.fechaSubida)).filter(d => d !== null);
+  const d_total   = todas.map(c => diffDias(c.fechaSesion, c.fechaSubida)).filter(d => d !== null);
+
+  function statCard(label, arr) {
+    if (!arr.length) return '';
     const a = avg(arr);
-    if (a === null || !arr.length) return '';
     return `<div class="stats-card">
       <div class="stats-card-lbl">${label}</div>
       <div class="stats-card-num">${a}<span> días</span></div>
-      <div class="stats-card-sub">${arr.length} sesiones · mín ${minV(arr)} · máx ${maxV(arr)}</div>
+      <div class="stats-card-sub">${arr.length} sesión${arr.length!==1?'es':''} · mín ${minV(arr)}d · máx ${maxV(arr)}d</div>
     </div>`;
   }
 
-  const listaRows = todos
-    .filter(c => c.fechaSesion && c.fechaSubida)
-    .sort((a,b) => (b.fechaSubida||'').localeCompare(a.fechaSubida||''))
-    .map(c => {
-      const total = diffDias(c.fechaSesion, c.fechaSubida);
-      const d1 = diffDias(c.fechaSesion, c.fechaEnvioGaleria);
-      const d2 = diffDias(c.fechaEnvioGaleria, c.fechaConfirmacion);
-      const d3 = diffDias(c.fechaConfirmacion, c.fechaSubida);
-      const partes = [
-        d1 !== null ? `galería ${d1}d` : null,
-        d2 !== null ? `espera ${d2}d` : null,
-        d3 !== null ? `edición ${d3}d` : null,
-      ].filter(Boolean).join(' · ');
-      return `<div class="stats-lista-row">
-        <div class="stats-lista-nombre">${c.bebe||'—'}<br><span style="font-size:11px;color:var(--muted);font-weight:400;">${c.mama||''}</span></div>
-        <div class="stats-lista-dias">
-          ${partes ? `<span style="color:var(--muted);">${partes}</span>` : ''}
-          ${total !== null ? `<strong style="margin-left:8px;">${total}d total</strong>` : ''}
-        </div>
-      </div>`;
-    }).join('');
+  const estadoLabel = { galeria_pendiente:'Galería pendiente', pendiente_cliente:'Galería enviada', edicion_renu:'En edición', para_subir:'Ed. terminada', subidas:'Entregada' };
 
-  document.getElementById('stats-container').innerHTML = todos.length === 0
-    ? `<div style="text-align:center;color:var(--muted);font-size:13px;padding:60px 20px;">Todavía no hay sesiones entregadas para mostrar estadísticas.</div>`
-    : `<div style="padding-bottom:40px;">
-        <div class="stats-section-title">Tiempos promedio</div>
-        <div class="stats-grid">
-          ${statCard('Sesión a entrega', '', d_total)}
-          ${statCard('Sesión a galería', '', d_sesGal)}
-          ${statCard('Galería a elección', '', d_galConf)}
-          ${statCard('Elección a entrega', '', d_confSub)}
-        </div>
-        ${listaRows ? `<div class="stats-section-title">Por sesión · más recientes primero</div>
-        <div class="stats-lista">${listaRows}</div>` : ''}
-      </div>`;
+  const sorted = [...todas].sort((a,b) => {
+    if (!a.fechaSesion && !b.fechaSesion) return 0;
+    if (!a.fechaSesion) return 1;
+    if (!b.fechaSesion) return -1;
+    return b.fechaSesion.localeCompare(a.fechaSesion);
+  });
+
+  const filas = sorted.map(c => {
+    const d1 = diffDias(c.fechaSesion, c.fechaEnvioGaleria);
+    const d2 = diffDias(c.fechaEnvioGaleria, c.fechaConfirmacion);
+    const d3 = diffDias(c.fechaConfirmacion, c.fechaSubida);
+    const dtotal = diffDias(c.fechaSesion, c.fechaSubida);
+    const dEstado = c.fechaUltimoEstado ? diasDesde(c.fechaUltimoEstado) : null;
+    const estadoTxt = !c._activa ? 'Eliminada' : (estadoLabel[c.estado] || c.estado || '—');
+    const enEstadoTxt = dEstado !== null ? `${estadoTxt}<br><span style="font-size:10px;color:var(--muted);">hace ${dEstado}d</span>` : estadoTxt;
+    return `<div class="stats-fila" style="${!c._activa ? 'opacity:0.55;' : ''}">
+      <div class="stats-col-nombre">${c.bebe||'—'}<br><span style="font-size:10px;color:var(--muted);font-weight:400;">${c.mama||''}</span></div>
+      <div class="stats-col-num">${fmtD(d1)}</div>
+      <div class="stats-col-num">${fmtD(d2)}</div>
+      <div class="stats-col-num">${fmtD(d3)}</div>
+      <div class="stats-col-num">${fmtD(dtotal)}</div>
+      <div class="stats-col-estado">${enEstadoTxt}</div>
+    </div>`;
+  }).join('');
+
+  const promediosHTML = (d_sesGal.length || d_galConf.length || d_confSub.length || d_total.length) ? `
+    <div class="stats-section-title">Tiempos promedio</div>
+    <div class="stats-grid">
+      ${statCard('Ses. → Galería', d_sesGal)}
+      ${statCard('Galería → Elección', d_galConf)}
+      ${statCard('Elección → Entrega', d_confSub)}
+      ${statCard('Total sesión → entrega', d_total)}
+    </div>` : '';
+
+  const tablaHTML = `
+    <div class="stats-section-title">Todas las sesiones · más recientes primero</div>
+    <div class="stats-tabla">
+      <div class="stats-header">
+        <div class="stats-col-nombre">Bebé</div>
+        <div class="stats-col-num">Ses.→Galería</div>
+        <div class="stats-col-num">Gal.→Elección</div>
+        <div class="stats-col-num">Eleg.→Entrega</div>
+        <div class="stats-col-num">Total</div>
+        <div class="stats-col-estado">Estado</div>
+      </div>
+      ${filas || '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">No hay sesiones cargadas todavía.</div>'}
+    </div>`;
+
+  document.getElementById('stats-container').innerHTML = `<div style="padding-bottom:40px;">${promediosHTML}${tablaHTML}</div>`;
 }
 
 
@@ -2484,6 +2560,8 @@ function renderDiseno() {
 inyectarEstilosCustom();
 autoSync();
 renderApp();
+setTimeout(fetchCalendar, 5000); // fetch automático al cargar (después de que Firebase conecte)
+setInterval(fetchCalendar, 30 * 60 * 1000); // refrescar cada 30 minutos
 </script>
 
 <script type="module">
@@ -2508,6 +2586,28 @@ const REF_ANGIE = doc(db, 'picabu', 'pedidos');
 const REF_RENU = doc(db, 'equipo', 'sesiones');
 // ── LECTURA/ESCRITURA: config compartida — estados custom, overrides, orden ──
 const REF_CONFIG = doc(db, 'equipo', 'config');
+// ── LECTURA/ESCRITURA: historial de sesiones eliminadas para estadísticas ──
+const REF_HISTORIAL = doc(db, 'equipo', 'historial');
+
+let _historial = [];
+window.__getHistorial = function() { return _historial; };
+
+window.__guardarHistorial = async function(entries) {
+  const lista = Array.isArray(entries) ? entries : [entries];
+  _historial = [..._historial, ...lista];
+  try {
+    await setDoc(REF_HISTORIAL, { lista: _historial, updated: new Date().toISOString() });
+    _lastSaveTs = new Date();
+    if (document.getElementById('stats-container') && typeof window.renderStats === 'function') window.renderStats();
+  } catch(e) { console.warn('[historial] error guardando:', e); }
+};
+
+onSnapshot(REF_HISTORIAL, snap => {
+  if (snap.exists() && snap.data()?.lista) {
+    _historial = snap.data().lista;
+    if (document.getElementById('stats-container') && typeof window.renderStats === 'function') window.renderStats();
+  }
+}, err => console.warn('[historial] snapshot error:', err));
 
 let _cfgSavedAt = 0;
 
@@ -2554,8 +2654,13 @@ window.saveContactadosToFirebase = async function(contactados) {
 
 // Escuchar sesiones de Renu
 onSnapshot(REF_RENU, snap => {
-  if (snap.exists() && snap.data()?.lista) {
-    if (typeof window.__renuLoad === 'function') window.__renuLoad(snap.data().lista);
+  if (!snap.exists()) return;
+  const data = snap.data();
+  if (data.contactados_sr !== undefined && typeof window.__loadContactadosSR === 'function') {
+    window.__loadContactadosSR(data.contactados_sr);
+  }
+  if (data.lista && typeof window.__renuLoad === 'function') {
+    window.__renuLoad(data.lista);
   }
 }, err => {
   console.warn('Firebase Renu:', err);
@@ -2569,9 +2674,16 @@ window.__angieSave = async function(lista) {
   _lastSaveTs = new Date();
 };
 
+window.__guardarContactadosSR = async function(obj) {
+  try {
+    await setDoc(REF_RENU, { contactados_sr: obj }, { merge: true });
+  } catch(e) { console.warn('[contactados_sr] error guardando:', e); }
+};
+
 window.__renuSave = async function(data) {
   const clean = JSON.parse(JSON.stringify(data, (k, v) => v === undefined ? null : v));
-  await setDoc(REF_RENU, { lista: clean, updated: new Date().toISOString() });
+  const contactados_sr = typeof window.__getContactadosSR === 'function' ? window.__getContactadosSR() : {};
+  await setDoc(REF_RENU, { lista: clean, contactados_sr, updated: new Date().toISOString() });
   _lastSaveTs = new Date();
 };
 </script>
