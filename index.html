@@ -1871,13 +1871,22 @@ function disenoSyncHtml() {
 function esPlantillaD(nombre) {
   return /^\d+\s*plantillas?\s*(de\s*)?datos/i.test(nombre || '');
 }
+function esHojaExtraD(nombre) {
+  return /^hoja.extra/i.test(nombre || '');
+}
+function _sizeDeNombreD(nombre) {
+  const m = (nombre||'').match(/(\d+\s*x\s*\d+)/i);
+  return m ? m[1].replace(/\s/g,'').toLowerCase() : null;
+}
 function nombreDisenoD(pedido, x) {
   const m = (x.nombre||'').match(/^(.*\()(\d+)(H\).*)$/i);
   if (!m) return x.nombre || '';
+  const sizeFoto = _sizeDeNombreD(x.nombre);
   let extras = 0;
   (pedido.prods||[]).forEach(p => {
     const pm = (p.nombre||'').match(/^(\d+)\s*plantillas?\s*(de\s*)?datos/i);
     if (pm) extras += parseInt(pm[1]);
+    if (esHojaExtraD(p.nombre) && sizeFoto && _sizeDeNombreD(p.nombre) === sizeFoto) extras++;
   });
   if (!extras) return x.nombre || '';
   return m[1] + (parseInt(m[2]) + extras) + m[3];
@@ -2001,6 +2010,7 @@ function disenoCardHtml(p, idx) {
   const prodsVisibles = (p.prods||[]).map((x,i)=>({...x,_oi:i})).filter(x => {
     if (x.soloWA) return false;                         // fotos extras: ocultar en Diseño
     if (esPlantillaD(x.nombre)) return false;           // plantillas: se consolidan en fotolibro
+    if (esHojaExtraD(x.nombre)) return false;           // hojas extras: se suman al fotolibro
     if (x.estado === 'Entregado') return false;
     if (x.cantIdx !== undefined) return x.cantIdx === 0;
     if (vistos.has(x.nombre)) return false;
