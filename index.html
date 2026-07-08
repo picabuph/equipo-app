@@ -2466,7 +2466,7 @@ function renderDiseno() {
   const alertasSeg = {};
   todosTodos.forEach(p => {
     (p.prods||[]).forEach(x => {
-      if (ESTADOS_ALERTA_D.includes(x.estado)) {
+      if (ESTADOS_ALERTA_D.includes(x.estado) && !x.soloWA && !esPlantillaD(x.nombre) && !/^hoja.extra/i.test(x.nombre||'')) {
         const d = daysSince(x.ultimoCambio || p.fecha);
         if (d >= getDias()) {
           const k = `${p.bebe} · ${p.mama}`;
@@ -2487,8 +2487,13 @@ function renderDiseno() {
   const contactados = getContactados();
   const DIAS_SEG = getDias();
   const ahora = Date.now();
+  const MS_48H = 48 * 60 * 60 * 1000;
   const MS_2DIAS = DIAS_SEG * 24 * 60 * 60 * 1000;
   const keysEnt = Object.keys(alertasEnt);
+  const keysSeg = Object.keys(alertasSeg).filter(k => {
+    const c = contactados['sr_' + k];
+    return !c || (ahora - c.ts) >= MS_48H;
+  });
   const pendientesEnt = keysEnt.filter(k => !contactados[k]);
   const seguimientoSaldo = keysEnt.filter(k => {
     const c = contactados[k];
@@ -2500,21 +2505,26 @@ function renderDiseno() {
   let html = '';
 
   // Bandeja alertas (idéntica a Picabú App)
-  const keysSeg = Object.keys(alertasSeg);
   const hayAlertas = keysSeg.length || pendientesEnt.length || seguimientoSaldo.length;
   if (hayAlertas) {
     html += `<div class="alertas-wrap">`;
     if (keysSeg.length) {
       html += `<div class="alert-box">
         <div class="alert-title">Sin respuesta del cliente</div>
-        ${keysSeg.map(k=>`<div class="alert-grupo">
-          <div class="alert-cliente">${k}</div>
-          ${alertasSeg[k].map(a=>`<div class="alert-item">
-            <span class="alert-prod">${a.prod}</span>
-            <span class="alert-badge">${a.estado}</span>
-            <span style="font-size:10px;color:#a05050;flex-shrink:0;">${a.dias}d</span>
-          </div>`).join('')}
-        </div>`).join('')}
+        ${keysSeg.map(k => {
+          const kEsc = k.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+          return `<div class="alert-grupo">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+              <input type="checkbox" onchange="marcarContactado('sr_${kEsc}',this.checked)" style="accent-color:var(--marron);width:15px;height:15px;cursor:pointer;flex-shrink:0;" title="Marcar como contactado (reaparece en 48h)">
+              <div class="alert-cliente" style="margin:0;">${k}</div>
+            </div>
+            ${alertasSeg[k].map(a=>`<div class="alert-item" style="padding-left:23px;">
+              <span class="alert-prod">${a.prod}</span>
+              <span class="alert-badge">${a.estado}</span>
+              <span style="font-size:10px;color:#a05050;flex-shrink:0;">${a.dias}d</span>
+            </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>`;
     }
     if (pendientesEnt.length || seguimientoSaldo.length) {
