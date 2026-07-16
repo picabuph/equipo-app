@@ -1884,6 +1884,7 @@ function nombreDisenoD(pedido, x) {
   const sizeFoto = _sizeDeNombreD(x.nombre);
   let extras = 0;
   (pedido.prods||[]).forEach(p => {
+    if (p.cantIdx !== undefined && p.cantIdx !== 0) return;
     const pm = (p.nombre||'').match(/^(\d+)\s*plantillas?\s*(de\s*)?datos/i);
     if (pm) extras += parseInt(pm[1]);
     if (esHojaExtraD(p.nombre) && sizeFoto && _sizeDeNombreD(p.nombre) === sizeFoto) extras++;
