@@ -1879,7 +1879,7 @@ function _sizeDeNombreD(nombre) {
   return m ? m[1].replace(/\s/g,'').toLowerCase() : null;
 }
 function nombreDisenoD(pedido, x) {
-  const m = (x.nombre||'').match(/^(.*\()(\d+)(H\).*)$/i);
+  const m = (x.nombre||'').match(/^(.*\()(\d+)(\s*(?:H\b|hojas?).*)$/i);
   if (!m) return x.nombre || '';
   const sizeFoto = _sizeDeNombreD(x.nombre);
   let extras = 0;
