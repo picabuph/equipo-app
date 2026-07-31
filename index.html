@@ -255,6 +255,25 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .stats-col-nombre { font-weight:500; color:var(--marron-d); }
 .stats-col-num { color:var(--text); font-weight:600; font-size:13px; }
 .stats-col-estado { font-size:11px; color:var(--muted); }
+/* ── Adelantos Renu ── */
+.adel-section-hdr { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.adel-section-label { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:#7a4e0a; font-weight:700; }
+.adel-count-badge { background:#e8c06a; color:#5a3a00; border-radius:10px; padding:1px 8px; font-size:10px; font-weight:600; }
+.adel-card { background:#fdf3dc; border:1px solid #e8c06a; border-radius:12px; margin-bottom:6px; overflow:hidden; }
+.adel-card .c-header { background:#fdf3dc; border-bottom:1px solid #f0d89a; padding:6px 10px; gap:6px; }
+.adel-card .c-footer { background:#fdf3dc; border-top:1px solid #f0d89a; padding:4px 10px; }
+.adel-badge { font-size:9px; background:#fff3cd; color:#7a4e0a; border-radius:5px; padding:1px 6px; font-weight:600; }
+.adel-badge-fotos { background:#e8c06a; color:#5a3a00; }
+.adel-info-row { display:flex; gap:10px; flex-wrap:wrap; padding:4px 10px; border-top:1px solid #f0d89a; }
+.adel-confirm-box { background:#fffaea; border-top:1px solid #f0d89a; padding:10px 12px; }
+.adel-confirm-q { font-size:12px; font-weight:600; color:#7a4e0a; margin-bottom:8px; }
+.adel-nota-expanded { background:#fffaea; border-top:1px solid #f0d89a; padding:7px 12px; font-size:11px; color:#5a4a40; line-height:1.5; }
+.adel-sep { border:none; border-top:1px solid var(--border); margin:14px 0 14px; }
+.adel-nuevo-btn { display:block; width:100%; text-align:left; background:none; border:1px dashed #e8c06a; border-radius:10px; padding:9px 14px; font-size:11px; color:#7a4e0a; font-family:'Montserrat',sans-serif; cursor:pointer; margin-bottom:14px; }
+.adel-solicitar-link { font-size:10px; color:#b8860b; background:none; border:none; cursor:pointer; font-family:'Montserrat',sans-serif; padding:0; text-decoration:underline; margin-right:auto; }
+.adel-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:9000; align-items:center; justify-content:center; padding:16px; }
+.adel-modal-overlay.open { display:flex; }
+.adel-modal { background:var(--white); border-radius:18px; padding:20px 18px 24px; width:100%; max-width:480px; }
 </style>
 <script>
 (function(){
@@ -504,6 +523,48 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
     <div class="mbox-btns">
       <button class="btn-sec" onclick="cerrarModalCF()">Cancelar</button>
       <button class="btn-pri" onclick="confirmarFotos()">Confirmar → Edición</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal confirmación obligatoria: ¿Enviaste las fotos a Angie? -->
+<div id="adel-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9200;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--white);border-radius:18px;padding:24px 20px 20px;width:100%;max-width:340px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-size:22px;margin-bottom:10px;">📦</div>
+    <div style="font-size:14px;font-weight:700;color:#3a2e2a;margin-bottom:6px;">¿Ya enviaste las fotos a Angie?</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:20px;">Si todavía no, el estado vuelve a Edición Renu.</div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="adel_confirmarModalNo()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:10px;background:none;font-family:'Montserrat',sans-serif;font-size:12px;cursor:pointer;color:var(--muted);">No, todavía</button>
+      <button onclick="adel_confirmarModalSi()" style="flex:2;padding:10px;border:none;border-radius:10px;background:#5a9a6a;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:700;cursor:pointer;color:#fff;">Sí, ya envié ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal global de adelantos -->
+<div class="adel-modal-overlay" id="adel-modal" onclick="if(event.target===this)adel_cerrarModal()">
+  <div class="adel-modal">
+    <div style="font-size:13px;font-weight:700;color:#5a3a00;margin-bottom:14px;">Solicitar adelanto de fotos</div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Sesión</label>
+      <select id="adel-m-sesion" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white);color:var(--text);"></select>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;">
+      <div style="flex:1;">
+        <label style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Cantidad de fotos</label>
+        <input id="adel-m-cant" type="number" min="1" placeholder="ej. 10" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-family:'Montserrat',sans-serif;font-size:12px;">
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Fecha límite</label>
+        <input id="adel-m-fecha" type="date" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-family:'Montserrat',sans-serif;font-size:12px;">
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Cuáles fotos (detalle para Renu)</label>
+      <textarea id="adel-m-nota" rows="2" placeholder="ej. las de familia completa al final" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-family:'Montserrat',sans-serif;font-size:12px;resize:none;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="adel_cerrarModal()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:10px;background:none;font-family:'Montserrat',sans-serif;font-size:12px;cursor:pointer;color:var(--muted);">Cancelar</button>
+      <button onclick="adel_guardarDesdeModal()" style="flex:2;padding:10px;border:none;border-radius:10px;background:#e8c06a;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:600;cursor:pointer;color:#5a3a00;">Solicitar adelanto</button>
     </div>
   </div>
 </div>
@@ -1107,6 +1168,10 @@ function renderApp() {
 
   let html = '';
 
+  // Adelantos pendientes (sección ámbar arriba de todo)
+  const adelHtml = typeof renderAdelantosPendientes === 'function' ? renderAdelantosPendientes() : '';
+  html += adelHtml;
+
   // Sync bar
   const _fmtSave = d => {
     const hoy = new Date(); const mismodia = d.getDate()===hoy.getDate()&&d.getMonth()===hoy.getMonth()&&d.getFullYear()===hoy.getFullYear();
@@ -1326,6 +1391,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
     </div>
     <div class="c-footer">
       ${acciones}
+      <button class="adel-solicitar-link" onclick="event.stopPropagation();adel_solicitarDesdeSesion('${c.id}')">Solicitar adelanto</button>
       <span class="sync-card" id="sync-${c.id}">${syncHtml}</span>
     </div>
   </div>`;
@@ -2583,6 +2649,219 @@ autoSync();
 renderApp();
 setTimeout(fetchCalendar, 5000); // fetch automático al cargar (después de que Firebase conecte)
 setInterval(fetchCalendar, 30 * 60 * 1000); // refrescar cada 30 minutos
+
+// ─── ADELANTOS RENU ───────────────────────────────────────────────────────────
+
+function _adelGetAll() {
+  const all = [];
+  (clientes || []).forEach(ses => {
+    if (!ses.adelantos) return;
+    ses.adelantos.forEach(a => all.push({ sesId: ses.id, sesBebe: ses.bebe, sesMama: ses.mama, ...a }));
+  });
+  return all;
+}
+
+function _adelUpdateOnSesion(sesId, adelId, changes) {
+  const ses = (clientes || []).find(s => s.id === sesId);
+  if (!ses || !ses.adelantos) return;
+  const idx = ses.adelantos.findIndex(a => a.id === adelId);
+  if (idx < 0) return;
+  ses.adelantos[idx] = { ...ses.adelantos[idx], ...changes };
+  marcarCambio(sesId);
+  renderApp();
+}
+
+function _adelAddToSesion(sesId, adelanto) {
+  const ses = (clientes || []).find(s => s.id === sesId);
+  if (!ses) return;
+  if (!ses.adelantos) ses.adelantos = [];
+  ses.adelantos.push(adelanto);
+  marcarCambio(sesId);
+  renderApp();
+}
+
+const _ADEL_ESTADOS = [
+  { id: 'edicion_renu',      label: 'Edición Renu',       bg: '#d4b3d7' },
+  { id: 'edicion_terminada', label: 'Edición terminada',  bg: '#c4a0c7' },
+  { id: 'subidas',           label: 'Subidas ✓',          bg: '#d4edda' },
+];
+
+function adelEstadoBtn(sesId, adelId, estadoActual) {
+  const allE = getEstadosEquipo();
+  const gc = id => { const s = allE.find(x => x.id === id); return s ? s.bg : (ESTADO_BG_DEFAULT[id] || '#e8e0d4'); };
+  const e = _ADEL_ESTADOS.find(x => x.id === estadoActual) || _ADEL_ESTADOS[0];
+  const opts = _ADEL_ESTADOS.map(s =>
+    `<button onclick="adel_cambiarEstado('${sesId}','${adelId}','${s.id}')"
+      style="display:block;width:100%;text-align:left;padding:6px 10px;background:${s.id===estadoActual?gc(s.id):'none'};border:none;border-radius:7px;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;color:#3a2e2a;">${s.label}</button>`
+  ).join('');
+  return `<div class="estado-wrap">
+    <button class="estado-btn" style="background:${gc(e.id)};color:#3a2e2a;"
+      onclick="event.stopPropagation();adel_toggleEstadoPop('${adelId}')">
+      <span class="estado-btn-lbl">${e.label}</span>
+      <span class="estado-btn-chv"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="#5a4a42" stroke-width="1.5" fill="none"/></svg></span>
+    </button>
+    <div class="estado-pop" id="adel-epop-${adelId}">${opts}</div>
+  </div>`;
+}
+
+function adel_toggleEstadoPop(adelId) {
+  const id = 'adel-epop-' + adelId;
+  document.querySelectorAll('.estado-pop.open').forEach(p => { if (p.id !== id) p.classList.remove('open'); });
+  const pop = document.getElementById(id);
+  if (!pop) return;
+  const opening = !pop.classList.contains('open');
+  if (opening) {
+    const btn = pop.previousElementSibling;
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      pop.style.top = (r.bottom + 4) + 'px';
+      pop.style.left = Math.max(4, r.right - 180) + 'px';
+    }
+  }
+  pop.classList.toggle('open', opening);
+}
+
+let _adelConfirmSesId = null, _adelConfirmAdelId = null;
+
+function adel_cambiarEstado(sesId, adelId, nuevoEstado) {
+  document.querySelectorAll('.estado-pop.open').forEach(p => p.classList.remove('open'));
+  if (nuevoEstado === 'edicion_terminada') {
+    _adelUpdateOnSesion(sesId, adelId, { estado: 'edicion_terminada' });
+    _adelConfirmSesId = sesId; _adelConfirmAdelId = adelId;
+    document.getElementById('adel-confirm-modal').style.display = 'flex';
+  } else {
+    _adelUpdateOnSesion(sesId, adelId, { estado: nuevoEstado });
+  }
+}
+
+function adel_confirmarModalSi() {
+  document.getElementById('adel-confirm-modal').style.display = 'none';
+  if (_adelConfirmSesId && _adelConfirmAdelId)
+    _adelUpdateOnSesion(_adelConfirmSesId, _adelConfirmAdelId, { estado: 'enviado_angie' });
+  _adelConfirmSesId = null; _adelConfirmAdelId = null;
+}
+
+function adel_confirmarModalNo() {
+  document.getElementById('adel-confirm-modal').style.display = 'none';
+  if (_adelConfirmSesId && _adelConfirmAdelId)
+    _adelUpdateOnSesion(_adelConfirmSesId, _adelConfirmAdelId, { estado: 'edicion_renu' });
+  _adelConfirmSesId = null; _adelConfirmAdelId = null;
+}
+
+function renderAdelantosPendientes() {
+  const ESTADOS_VISIBLES = ['edicion_renu', 'edicion_terminada', 'subidas', 'pendiente', 'confirmando'];
+  const pendientes = _adelGetAll().filter(a => ESTADOS_VISIBLES.includes(a.estado) || !['enviado_angie','completado'].includes(a.estado));
+  if (!pendientes.length) return '';
+
+  const cards = pendientes.map(a => {
+    // Normalizar estados legacy
+    const estadoNorm = (a.estado === 'pendiente' || a.estado === 'confirmando') ? 'edicion_renu' : a.estado;
+
+    let fechaHtml = '';
+    if (a.fechaLimite) {
+      const dE = diasHasta(a.fechaLimite);
+      const bc = dE < 0 ? '#c94040' : dE <= 5 ? '#e05050' : dE <= 10 ? '#e0a030' : '#c97b00';
+      const dTxt = dE < 0
+        ? `<span style="font-size:11px;color:#c94040;margin-left:4px">(${Math.abs(dE)} días)</span>`
+        : dE === 0 ? `<span style="font-size:11px;color:#e05050;margin-left:4px">(¡Hoy!)</span>`
+        : `<span style="font-size:11px;color:${bc};margin-left:4px">(${dE} días)</span>`;
+      fechaHtml = `<div class="c-body" style="padding-top:0;padding-bottom:2px;"><div class="c-info-row">
+        <div class="c-info-item">
+          <span class="c-info-label">Fecha límite</span>
+          <span class="c-info-val" style="color:${bc};font-weight:700;">${fmt(a.fechaLimite)}${dTxt}</span>
+        </div>
+      </div></div>`;
+    }
+
+    const notaBtn = a.nota
+      ? `<button onclick="adel_toggleNota('${a.id}')" style="font-size:10px;color:#7a4e0a;background:#fffaea;border:1px solid #e8c06a;border-radius:8px;cursor:pointer;font-family:'Montserrat',sans-serif;padding:3px 0;display:block;width:100%;text-align:center;margin-top:5px;">Ver detalle ▾</button>` : '';
+    const notaDiv = a.nota
+      ? `<div id="adel-nota-${a.id}" style="display:none;margin:0 10px 4px;" class="c-notas">${a.nota}</div>` : '';
+
+    return `<div class="c-card" style="background:#fdf3dc;border-color:#e8c06a;">
+      <div class="c-header">
+        <div class="c-nombres">
+          <div class="c-bebe-row">
+            <span class="c-bebe" style="color:#5a3a00;">${a.sesBebe}</span>
+            ${a.sesMama ? `<span class="c-mama-inline">${a.sesMama}</span>` : ''}
+          </div>
+          <div class="c-badges">
+            <span class="badge-paquete" style="background:#e8c06a;color:#5a3a00;border-color:#c9a000;">${a.cantFotos} fotos</span>
+          </div>
+        </div>
+        <div style="flex-shrink:0;text-align:right;">
+          ${adelEstadoBtn(a.sesId, a.id, estadoNorm)}
+          ${notaBtn}
+        </div>
+      </div>
+      ${notaDiv}
+      ${fechaHtml}
+    </div>`;
+  }).join('');
+
+  return `<div style="margin-bottom:6px;">
+    <div class="adel-section-hdr">
+      <span class="adel-section-label">Adelantos pendientes</span>
+      <span class="adel-count-badge">${pendientes.length}</span>
+    </div>
+    ${cards}
+    <button class="adel-nuevo-btn" onclick="adel_abrirModalNuevo(null)">+ Nuevo adelanto</button>
+    <hr class="adel-sep">
+  </div>`;
+}
+
+function adel_toggleNota(adelId) {
+  const el = document.getElementById('adel-nota-' + adelId);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function adel_iniciarConfirm(sesId, adelId) {
+  _adelUpdateOnSesion(sesId, adelId, { estado: 'confirmando' });
+}
+
+function adel_cancelarConfirm(sesId, adelId) {
+  _adelUpdateOnSesion(sesId, adelId, { estado: 'pendiente' });
+}
+
+function adel_confirmarEnvio(sesId, adelId) {
+  _adelUpdateOnSesion(sesId, adelId, { estado: 'enviado_angie' });
+}
+
+let _adelModalSesPreselect = null;
+
+function adel_abrirModalNuevo(sesId) {
+  _adelModalSesPreselect = sesId;
+  const sel = document.getElementById('adel-m-sesion');
+  if (sel) {
+    const activas = (clientes || []).filter(c => !estaTerminadoFn(c));
+    sel.innerHTML = activas.map(c =>
+      `<option value="${c.id}" ${c.id === sesId ? 'selected' : ''}>${c.bebe}${c.mama ? ' · ' + c.mama : ''}</option>`
+    ).join('');
+  }
+  const fi = document.getElementById('adel-m-cant'); if (fi) fi.value = '';
+  const fd = document.getElementById('adel-m-fecha'); if (fd) fd.value = '';
+  const fn = document.getElementById('adel-m-nota'); if (fn) fn.value = '';
+  document.getElementById('adel-modal').classList.add('open');
+}
+
+function adel_cerrarModal() {
+  document.getElementById('adel-modal').classList.remove('open');
+}
+
+function adel_guardarDesdeModal() {
+  const sesId = document.getElementById('adel-m-sesion')?.value;
+  const cant = parseInt(document.getElementById('adel-m-cant')?.value || '0');
+  const fecha = document.getElementById('adel-m-fecha')?.value || '';
+  const nota = document.getElementById('adel-m-nota')?.value?.trim() || '';
+  if (!sesId || !cant || !fecha) { alert('Completá sesión, cantidad de fotos y fecha límite.'); return; }
+  const adelanto = { id: 'adel-' + Date.now(), cantFotos: cant, nota, fechaLimite: fecha, estado: 'pendiente', creadoEn: new Date().toISOString() };
+  _adelAddToSesion(sesId, adelanto);
+  adel_cerrarModal();
+}
+
+function adel_solicitarDesdeSesion(sesId) {
+  adel_abrirModalNuevo(sesId);
+}
 </script>
 
 <script type="module">
