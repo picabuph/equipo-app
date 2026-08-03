@@ -402,6 +402,15 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 </div>
 
 <div class="page active" id="page-sesiones">
+  <div class="container" style="display:flex;align-items:center;gap:8px;padding:4px 14px 0;max-width:800px;margin:0 auto;">
+    <button id="btn-filtro-video" onclick="filtroSoloVideo=!filtroSoloVideo;renderApp();" style="display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;font-size:11px;font-family:'Montserrat',sans-serif;color:var(--muted);cursor:pointer;white-space:nowrap;">🎬 Videos</button>
+    <div style="flex:1;"></div>
+    <div style="display:flex;align-items:center;gap:4px;background:var(--white);border:1px solid var(--border);border-radius:20px;padding:4px 10px;">
+      <span style="font-size:13px;color:var(--muted);">🔍</span>
+      <input id="search-sesiones" type="text" oninput="filtroSearchSesiones=this.value;renderApp();document.getElementById('search-sesiones-x').style.display=this.value?'inline':'none';" style="border:none;outline:none;background:none;font-size:12px;font-family:inherit;color:var(--marron);width:120px;">
+      <span id="search-sesiones-x" onclick="filtroSearchSesiones='';document.getElementById('search-sesiones').value='';this.style.display='none';renderApp();" style="display:none;cursor:pointer;font-size:13px;color:var(--muted);line-height:1;">✕</span>
+    </div>
+  </div>
   <div class="container" id="app"></div>
 </div>
 <div class="page" id="page-diseno">
@@ -618,6 +627,8 @@ function fotosDelPaquete(paq) {
 const PEDIDOS_ANGIE_SIMULADOS = [];
 
 let clientes = [];
+let filtroSearchSesiones = '';
+let filtroSoloVideo = false;
 
 let editandoIdx = null;
 let confirmandoIdx = null;
@@ -1158,8 +1169,23 @@ function getEdicionOrdenada() {
 function renderApp() {
   const app = document.getElementById('app');
 
-  const activas = getActivasOrdenadas(clientes.filter(c => !estaTerminadoFn(c)));
-  const trabajosTerminados = clientes.filter(c => estaTerminadoFn(c));
+  const qS = filtroSearchSesiones.toLowerCase().trim();
+  const clientesFiltrados = qS ? clientes.filter(c => (c.bebe||'').toLowerCase().includes(qS) || (c.mama||'').toLowerCase().includes(qS)) : clientes;
+
+  const _esVideoActivoPendiente = c => c.tareaVideoPendiente && c.videoConfirmado && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar;
+  const clientesParaVer = filtroSoloVideo ? clientesFiltrados.filter(_esVideoActivoPendiente) : clientesFiltrados;
+
+  const activas = getActivasOrdenadas(clientesParaVer.filter(c => !estaTerminadoFn(c)));
+  const trabajosTerminados = filtroSoloVideo ? [] : clientesFiltrados.filter(c => estaTerminadoFn(c));
+
+  // Actualizar botón de filtro video
+  const btnFV = document.getElementById('btn-filtro-video');
+  if (btnFV) {
+    btnFV.style.background = filtroSoloVideo ? '#e8d4f5' : 'none';
+    btnFV.style.color = filtroSoloVideo ? '#5a2a7a' : 'var(--muted)';
+    btnFV.style.borderColor = filtroSoloVideo ? '#a070c0' : 'var(--border)';
+    btnFV.style.fontWeight = filtroSoloVideo ? '600' : '400';
+  }
 
   // Alerta sin respuesta (sigue mostrándose arriba)
   const _eq_cont = eq_getContactadosSR();
@@ -1174,6 +1200,23 @@ function renderApp() {
   // Adelantos pendientes (sección ámbar arriba de todo)
   const adelHtml = typeof renderAdelantosPendientes === 'function' ? renderAdelantosPendientes() : '';
   html += adelHtml;
+
+  // Alerta: video confirmado hace más de 2 días sin grabar
+  const _hoyStr = new Date().toISOString().split('T')[0];
+  const videoAtrasados = clientes.filter(c => {
+    if (!_esVideoActivoPendiente(c) || !c.fechaVideoConfirmado) return false;
+    const diff = Math.round((new Date(_hoyStr) - new Date(c.fechaVideoConfirmado)) / 86400000);
+    return diff >= 2;
+  });
+  if (videoAtrasados.length) {
+    html += `<div class="alerta-15" style="border-color:#c4a0c7;background:#f5eef8;">
+      <div class="alerta-15-titulo" style="color:#5a2a7a;">⚠ Video sin grabar — más de 2 días</div>
+      ${videoAtrasados.map(c => {
+        const diff = Math.round((new Date(_hoyStr) - new Date(c.fechaVideoConfirmado)) / 86400000);
+        return `<div class="alerta-15-item"><span>${c.bebe} (${c.mama}) — hace ${diff} día${diff!==1?'s':''}</span></div>`;
+      }).join('')}
+    </div>`;
+  }
 
   // Sync bar
   const _fmtSave = d => {
@@ -1203,28 +1246,50 @@ function renderApp() {
   }
 
   // ── Sección única: todas las sesiones activas con divisores por grupo ──
-  // Los estados custom con 'grupo' asignado se muestran bajo la sección de ese estado base
   const _cfg = getConfig();
-  // para_subir se agrupa con edicion_terminada → forman la sección "Editadas"
   const _BUILTIN_GRUPO_MAP = { para_subir: 'edicion_terminada' };
   const _hoy = new Date().toISOString().slice(0, 10);
   function _grupoKey(c) {
     const estado = c.estado;
     if (_BUILTIN_GRUPO_MAP[estado]) return _BUILTIN_GRUPO_MAP[estado];
-    // Galería pendiente con sesión futura → sección "Próximas sesiones"
     if (estado === 'galeria_pendiente' && c.fechaSesion && c.fechaSesion > _hoy) return 'proximas';
     const custom = (_cfg.estadosCustom||[]).find(s => s.id === estado);
     return custom?.grupo || estado;
   }
-  let _prevGrupo = null;
+  function _entGrupoKey(c) {
+    if (!c.entregables || (!c.entregables.video && !c.entregables.packFotos)) return null;
+    const est = c.entregables.estado || 'edicion_renu';
+    return _BUILTIN_GRUPO_MAP[est] || est;
+  }
+
+  // Pre-agrupar sesiones y entregables huérfanos por grupo
+  const grupoMap = {};
+  const grupoOrder = [];
   activas.forEach(c => {
     const gk = _grupoKey(c);
-    if (gk !== _prevGrupo) {
-      if (_prevGrupo !== null) html += `<div style="height:14px;"></div>`;
-      html += `<div class="grupo-label"><span>${_getGrupoLabel(gk)}</span></div>`;
-      _prevGrupo = gk;
+    if (!grupoMap[gk]) { grupoMap[gk] = { sessions: [], orphans: [] }; grupoOrder.push(gk); }
+    grupoMap[gk].sessions.push(c);
+    const entGk = _entGrupoKey(c);
+    if (entGk && entGk !== gk) {
+      if (!grupoMap[entGk]) { grupoMap[entGk] = { sessions: [], orphans: [] }; grupoOrder.push(entGk); }
+      grupoMap[entGk].orphans.push(c);
     }
-    html += renderCard(c, clientes.indexOf(c), false, false);
+  });
+
+  let firstGrupo = true;
+  grupoOrder.forEach(gk => {
+    const grupo = grupoMap[gk];
+    if (!grupo.sessions.length && !grupo.orphans.length) return;
+    if (!firstGrupo) html += `<div style="height:14px;"></div>`;
+    firstGrupo = false;
+    html += `<div class="grupo-label"><span>${_getGrupoLabel(gk)}</span></div>`;
+    grupo.sessions.forEach(c => {
+      html += renderCard(c, clientes.indexOf(c), false, false);
+      if (_entGrupoKey(c) === gk) html += renderEntregablesCard(c);
+    });
+    grupo.orphans.forEach(c => {
+      html += renderEntregablesCard(c);
+    });
   });
 
   // ── Trabajos terminados (colapsable) ──
@@ -1354,7 +1419,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
     acciones += `<button class="btn-accion btn-accion-del" onclick="eliminarEntregada(${idx})">Eliminar</button>`;
   }
   // Botones de video — siempre visibles cuando hay tarea de video, sin importar modo compacto
-  if (c.tareaVideoPendiente && !c.sinVideo && !c.videoSinGrabar) {
+  if (c.tareaVideoPendiente && c.videoConfirmado && !c.sinVideo && !c.videoSinGrabar) {
     const btnPend = c.tareaVideoHecho
       ? `<button class="btn-accion btn-accion-video-off" onclick="deshacerVideo(${idx})" title="Volver a pendiente">🎬 Video pendiente</button>`
       : `<button class="btn-accion btn-accion-video" style="cursor:default;opacity:0.7" disabled>🎬 Video pendiente</button>`;
@@ -1377,7 +1442,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
         <div class="c-badges">
           ${c.paquete ? `<span class="badge-paquete">${c.paquete}</span>` : ''}
           ${c.tieneProductos ? '<span class="badge-prod">📦 Productos</span>' : ''}
-          ${c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar ? '<span class="badge-video">🎬 Video pendiente</span>' : ''}
+          ${c.tareaVideoPendiente && c.videoConfirmado && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar ? '<span class="badge-video">🎬 Video pendiente</span>' : ''}
           ${c.tareaVideoPendiente && c.tareaVideoHecho ? '<span class="badge-video" style="background:#d4f0e0;color:#2a6a47;">✓ Video hecho</span>' : ''}
           ${c.sinVideo ? '<span class="badge-video" style="background:var(--arena-l);color:var(--muted);">— Sin video</span>' : ''}
         </div>
@@ -1398,6 +1463,68 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
       <span class="sync-card" id="sync-${c.id}">${syncHtml}</span>
     </div>
   </div>`;
+}
+
+// ─── MINI CARD ENTREGABLES ────────────────────────────────────
+function renderEntregablesCard(c) {
+  const ent = c.entregables;
+  if (!ent || (!ent.video && !ent.packFotos)) return '';
+  const estado = ent.estado || 'edicion_renu';
+  const e = getEstadoInfo(estado);
+  const fechaEntrega = c.fechaLimite || (c.fechaSesion ? calcLimite(c.fechaSesion, 30) : null);
+  let fechaHtml = '';
+  if (fechaEntrega) {
+    const dE = diasHasta(fechaEntrega);
+    const bc = dE < 0 ? '#c94040' : dE <= 5 ? '#e05050' : dE <= 10 ? '#e0a030' : '#5cad80';
+    const diasTxt = dE < 0 ? `<span style="font-size:11px;color:#c94040;margin-left:5px">(${Math.abs(dE)} días)</span>`
+                  : dE === 0 ? `<span style="font-size:11px;color:#e05050;margin-left:5px">(¡Hoy!)</span>`
+                  : `<span style="font-size:11px;color:${bc};margin-left:5px">(${dE} días)</span>`;
+    fechaHtml = `<div class="c-info-item"><span class="c-info-label" style="color:${dE<=5?'#c94040':'var(--muted)'};">Entrega</span><span class="c-info-val" style="color:${bc};font-size:13px;font-weight:700;">${fmt(fechaEntrega)}${diasTxt}</span></div>`;
+  }
+  const items = [ent.video ? 'Video de backstage' : null, ent.packFotos ? 'Pack de fotos sin editar' : null].filter(Boolean);
+  const itemsHtml = items.map(it => `<div class="c-info-item"><span class="c-info-label" style="color:var(--muted);">Entregable</span><span class="c-info-val">${it}</span></div>`).join('');
+  const ENTS = ['pendiente_cliente','edicion_renu','edicion_terminada','subidas'];
+  const popOpts = ENTS.map(id => {
+    const ei = getEstadoInfo(id);
+    return `<button onclick="entregables_cambiarEstado('${c.id}','${id}')" style="display:block;width:100%;text-align:left;padding:6px 10px;background:${id===estado?ei.bg:'none'};border:none;border-radius:7px;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;color:#3a2e2a;">${ei.label}</button>`;
+  }).join('');
+  return `<div class="c-card" style="background:#ede8df;margin-bottom:5px;margin-top:-2px;">
+    <div class="c-header">
+      <div class="c-nombres" style="padding-left:2px;">
+        <div class="c-bebe-row"><span class="c-bebe">${c.bebe||'—'}</span>${c.mama?`<span class="c-mama-inline">${c.mama}</span>`:''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <div class="estado-wrap">
+          <button class="estado-btn" style="background:${e.bg};" onclick="event.stopPropagation();entregables_togglePop('${c.id}',this)"><span class="estado-btn-lbl">${e.label}</span><span class="estado-btn-chv"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="#5a4a42" stroke-width="1.5" fill="none"/></svg></span></button>
+          <div class="estado-pop" id="entpop-${c.id}"><div class="estado-opts">${popOpts}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="c-body"><div class="c-info-row">${fechaHtml}${itemsHtml}</div></div>
+  </div>`;
+}
+function entregables_togglePop(sesId, btn) {
+  const pop = document.getElementById(`entpop-${sesId}`);
+  if (!pop) return;
+  const opening = !pop.classList.contains('open');
+  if (_activeEPop) { const prev = document.getElementById(_activeEPop); if (prev) prev.classList.remove('open'); }
+  if (opening) {
+    const r = btn.getBoundingClientRect();
+    const popH = 4 * 34 + 8;
+    const spaceBelow = window.innerHeight - r.bottom - 8;
+    pop.style.top = (spaceBelow < popH ? Math.max(4, r.top - popH - 4) : r.bottom + 4) + 'px';
+    pop.style.left = r.left + 'px';
+  }
+  pop.classList.toggle('open', opening);
+  _activeEPop = opening ? `entpop-${sesId}` : null;
+}
+function entregables_cambiarEstado(sesId, nuevoEstado) {
+  const idx = clientes.findIndex(c => c.id === sesId);
+  if (idx < 0) return;
+  if (!clientes[idx].entregables) clientes[idx].entregables = {};
+  clientes[idx].entregables.estado = nuevoEstado;
+  marcarCambio(sesId);
+  renderApp();
 }
 
 // ─── DRAG & DROP ──────────────────────────────────────────────
@@ -2475,32 +2602,12 @@ function renderStats() {
     </div>`;
   }
 
-  const estadoLabel = { galeria_pendiente:'Galería pendiente', pendiente_cliente:'Galería enviada', edicion_renu:'En edición', para_subir:'Ed. terminada', subidas:'Entregada' };
-
   const sorted = [...todas].sort((a,b) => {
     if (!a.fechaSesion && !b.fechaSesion) return 0;
     if (!a.fechaSesion) return 1;
     if (!b.fechaSesion) return -1;
     return b.fechaSesion.localeCompare(a.fechaSesion);
   });
-
-  const filas = sorted.map(c => {
-    const d1 = diffDias(c.fechaSesion, c.fechaEnvioGaleria);
-    const d2 = diffDias(c.fechaEnvioGaleria, c.fechaConfirmacion);
-    const d3 = diffDias(c.fechaConfirmacion, c.fechaSubida);
-    const dtotal = diffDias(c.fechaSesion, c.fechaSubida);
-    const dEstado = c.fechaUltimoEstado ? diasDesde(c.fechaUltimoEstado) : null;
-    const estadoTxt = !c._activa ? 'Eliminada' : (estadoLabel[c.estado] || c.estado || '—');
-    const enEstadoTxt = dEstado !== null ? `${estadoTxt}<br><span style="font-size:10px;color:var(--muted);">hace ${dEstado}d</span>` : estadoTxt;
-    return `<div class="stats-fila" style="${!c._activa ? 'opacity:0.55;' : ''}">
-      <div class="stats-col-nombre">${c.bebe||'—'}<br><span style="font-size:10px;color:var(--muted);font-weight:400;">${c.mama||''}</span></div>
-      <div class="stats-col-num">${fmtD(d1)}</div>
-      <div class="stats-col-num">${fmtD(d2)}</div>
-      <div class="stats-col-num">${fmtD(d3)}</div>
-      <div class="stats-col-num">${fmtD(dtotal)}</div>
-      <div class="stats-col-estado">${enEstadoTxt}</div>
-    </div>`;
-  }).join('');
 
   const promediosHTML = (d_sesGal.length || d_galConf.length || d_confSub.length || d_total.length) ? `
     <div class="stats-section-title">Tiempos promedio</div>
@@ -2511,23 +2618,122 @@ function renderStats() {
       ${statCard('Total sesión → entrega', d_total)}
     </div>` : '';
 
-  const tablaHTML = `
-    <div class="stats-section-title">Todas las sesiones · más recientes primero</div>
-    <div class="stats-tabla">
-      <div class="stats-header">
-        <div class="stats-col-nombre">Bebé</div>
-        <div class="stats-col-num">Ses.→Galería</div>
-        <div class="stats-col-num">Gal.→Elección</div>
-        <div class="stats-col-num">Eleg.→Entrega</div>
-        <div class="stats-col-num">Total</div>
-        <div class="stats-col-estado">Estado</div>
-      </div>
-      ${filas || '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">No hay sesiones cargadas todavía.</div>'}
-    </div>`;
+  // Histograma: distribución de tiempos Elección → Entrega
+  const histBuckets = [
+    { label: '0–7d',  min:0,  max:7 },
+    { label: '8–14d', min:8,  max:14 },
+    { label: '15–21d',min:15, max:21 },
+    { label: '22–30d',min:22, max:30 },
+    { label: '+30d',  min:31, max:Infinity },
+  ];
+  const histCounts = histBuckets.map(b => d_confSub.filter(d => d >= b.min && d <= b.max).length);
+  const histMax = Math.max(...histCounts, 1);
+  const histogramaHTML = d_confSub.length ? `
+    <div class="stats-section-title">Distribución · Elección → Entrega</div>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
+      ${histBuckets.map((b,i) => `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:${i<histBuckets.length-1?'8':'0'}px;">
+          <div style="width:48px;font-size:11px;color:var(--muted);text-align:right;flex-shrink:0;">${b.label}</div>
+          <div style="flex:1;background:var(--arena-l);border-radius:6px;height:16px;overflow:hidden;">
+            <div style="width:${Math.round(histCounts[i]/histMax*100)}%;background:var(--marron);height:100%;border-radius:6px;min-width:${histCounts[i]>0?'4':'0'}px;"></div>
+          </div>
+          <div style="width:18px;font-size:11px;font-weight:600;color:var(--text);text-align:right;">${histCounts[i]}</div>
+        </div>`).join('')}
+    </div>` : '';
 
-  document.getElementById('stats-container').innerHTML = `<div style="padding-bottom:40px;">${promediosHTML}${tablaHTML}</div>`;
+  // Sesiones agrupadas por mes, colapsables
+  const meses = {};
+  const mesOrder = [];
+  sorted.forEach(c => {
+    const key = c.fechaSesion ? c.fechaSesion.slice(0,7) : '0000-00';
+    if (!meses[key]) { meses[key] = []; mesOrder.push(key); }
+    meses[key].push(c);
+  });
+  const NOMBRES_MES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fmtMes = key => {
+    if (key === '0000-00') return 'Sin fecha de sesión';
+    const [y,m] = key.split('-');
+    return `${NOMBRES_MES[parseInt(m)-1]} ${y}`;
+  };
+  const tablaHTML = mesOrder.length ? `
+    <div class="stats-section-title">Sesiones por mes</div>
+    ${mesOrder.map(key => {
+      const ses = meses[key];
+      const edits = ses.map(c => diffDias(c.fechaConfirmacion, c.fechaSubida)).filter(d => d !== null);
+      const avgEdit = avg(edits);
+      const filasMes = ses.map(c => {
+        const d1 = diffDias(c.fechaSesion, c.fechaEnvioGaleria);
+        const d2 = diffDias(c.fechaEnvioGaleria, c.fechaConfirmacion);
+        const d3 = diffDias(c.fechaConfirmacion, c.fechaSubida);
+        const dtotal = diffDias(c.fechaSesion, c.fechaSubida);
+        return `<div class="stats-fila" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr;${!c._activa?'opacity:0.5;':''}">
+          <div class="stats-col-nombre">${c.bebe||'—'}<br><span style="font-size:10px;color:var(--muted);font-weight:400;">${c.mama||''}</span></div>
+          <div class="stats-col-num">${fmtD(d1)}</div>
+          <div class="stats-col-num">${fmtD(d2)}</div>
+          <div class="stats-col-num">${fmtD(d3)}</div>
+          <div class="stats-col-num">${fmtD(dtotal)}</div>
+        </div>`;
+      }).join('');
+      return `<details style="margin-bottom:6px;">
+        <summary style="list-style:none;-webkit-appearance:none;cursor:pointer;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:10px;">
+          <span style="font-weight:600;color:var(--marron-d);font-size:13px;flex:1;">${fmtMes(key)}</span>
+          <span style="color:var(--muted);font-size:11px;">${ses.length} ses.</span>
+          ${avgEdit !== null ? `<span style="color:var(--text);font-size:12px;font-weight:600;">${avgEdit}d edición</span>` : ''}
+          <span style="color:var(--muted);font-size:11px;">▾</span>
+        </summary>
+        <div style="margin-top:3px;" class="stats-tabla">
+          <div class="stats-header" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr;">
+            <div>Bebé</div><div>Ses.→Gal.</div><div>Gal.→Eleg.</div><div>Eleg.→Entrega</div><div>Total</div>
+          </div>
+          ${filasMes}
+        </div>
+      </details>`;
+    }).join('')}` : '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">No hay sesiones todavía.</div>';
+
+  document.getElementById('stats-container').innerHTML = `<div style="padding-bottom:40px;">${promediosHTML}${histogramaHTML}${tablaHTML}</div>`;
 }
 
+
+function todosEntregados(p) {
+  const vis = (p.prods||[]).filter(x => !x.soloWA && !esPlantillaD(x.nombre) && !esHojaExtraD(x.nombre));
+  return vis.length > 0 && vis.every(x => x.estado === 'Entregado');
+}
+function esServicioSinProduccionD(nombre) {
+  return /video/i.test(nombre||'') || /backstage/i.test(nombre||'') ||
+         /pack.*foto/i.test(nombre||'') || /fotos?\s+sin\s+editar/i.test(nombre||'');
+}
+function clasificarPedidoD(p) {
+  const prods = (p.prods||[]).filter(x => !x.soloWA && !esPlantillaD(x.nombre) && !esHojaExtraD(x.nombre) && !esServicioSinProduccionD(x.nombre) && (x.cantIdx === undefined || x.cantIdx === 0));
+  if (!prods.length) return 'pendiente_diseno';
+  if (prods.every(x => x.estado === 'Listo en estudio' || x.estado === 'Entregado')) return 'listo';
+  if (prods.every(x => x.estado === 'En producción' || x.estado === 'Listo en estudio' || x.estado === 'Entregado')) return 'produccion';
+  if (prods.some(x => x.estado === 'Pendiente datos cliente')) return 'pendiente_cliente';
+  return 'pendiente_diseno';
+}
+function deadlinePedidoD(p) {
+  const conFecha = (p.prods||[]).filter(x => x.fechaLimiteEntrega).map(x => x.fechaLimiteEntrega);
+  if (conFecha.length) return conFecha.sort()[0];
+  const sesMatch = clientes.find(s =>
+    s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() &&
+    s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase())
+  );
+  if (sesMatch && sesMatch.fechaConfirmacion) {
+    const d = new Date(sesMatch.fechaConfirmacion + 'T12:00');
+    d.setDate(d.getDate() + 60);
+    return d.toISOString().split('T')[0];
+  }
+  if (p.fecha) {
+    const parts = p.fecha.split('/');
+    if (parts.length === 3) {
+      const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00`);
+      if (!isNaN(d.getTime())) {
+        d.setDate(d.getDate() + 30);
+        return d.toISOString().split('T')[0];
+      }
+    }
+  }
+  return '9999-12-31';
+}
 
 function renderDiseno() {
   const el = document.getElementById('diseno-container');
@@ -2636,11 +2842,32 @@ function renderDiseno() {
     html += `</div>`;
   }
 
-  // Lista plana sin agrupamiento (idéntico a Picabú App)
-  if (todosTodos.length) {
-    html += todosTodos.map(p => disenoCardHtml(p, PEDIDOS_ANGIE_SIMULADOS.indexOf(p))).join('');
-  } else {
-    html = '<div class="empty">No hay productos activos en este momento.</div>';
+  // Lista agrupada por estado
+  const gruposAngie = { pendiente_diseno: [], pendiente_cliente: [], produccion: [], listo: [] };
+  PEDIDOS_ANGIE_SIMULADOS.filter(p => !todosEntregados(p)).forEach(p => {
+    gruposAngie[clasificarPedidoD(p)].push(p);
+  });
+  Object.values(gruposAngie).forEach(arr => arr.sort((a,b) => deadlinePedidoD(a).localeCompare(deadlinePedidoD(b))));
+
+  const gLabelD = (txt, color) =>
+    `<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:${color};font-weight:700;padding:14px 4px 5px;display:flex;align-items:center;gap:8px;">${txt}<span style="flex:1;height:1px;background:${color};opacity:0.25;display:inline-block;"></span></div>`;
+
+  const GRUPOS_ANGIE = [
+    { key: 'pendiente_diseno',  label: 'Pendiente diseño',  color: '#7a8a6a' },
+    { key: 'pendiente_cliente', label: 'Pendiente cliente', color: '#9a6400' },
+    { key: 'produccion',        label: 'En producción',     color: '#2e6a50' },
+    { key: 'listo',             label: 'Listo en estudio',  color: '#4a7a3a' },
+  ];
+
+  let hayPedidos = false;
+  GRUPOS_ANGIE.forEach(({ key, label, color }) => {
+    if (!gruposAngie[key].length) return;
+    hayPedidos = true;
+    html += gLabelD(label, color);
+    html += gruposAngie[key].map(p => disenoCardHtml(p, PEDIDOS_ANGIE_SIMULADOS.indexOf(p))).join('');
+  });
+  if (!hayPedidos && !todosTodos.length) {
+    html += '<div class="empty">No hay productos activos en este momento.</div>';
   }
 
   el.innerHTML = html;
