@@ -543,8 +543,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 <!-- Modal global de adelantos -->
 <div class="adel-modal-overlay" id="adel-modal" onclick="if(event.target===this)adel_cerrarModal()">
   <div class="adel-modal">
-    <div style="font-size:13px;font-weight:700;color:#5a3a00;margin-bottom:14px;">Solicitar adelanto de fotos</div>
-    <div style="margin-bottom:10px;">
+    <div id="adel-m-title" style="font-size:13px;font-weight:700;color:#5a3a00;margin-bottom:14px;">Solicitar adelanto de fotos</div>
+    <div id="adel-m-sesion-row" style="margin-bottom:10px;">
       <label style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Sesión</label>
       <select id="adel-m-sesion" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-family:'Montserrat',sans-serif;font-size:12px;background:var(--white);color:var(--text);"></select>
     </div>
@@ -562,9 +562,12 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       <label style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Cuáles fotos (detalle para Renu)</label>
       <textarea id="adel-m-nota" rows="2" placeholder="ej. las de familia completa al final" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-family:'Montserrat',sans-serif;font-size:12px;resize:none;"></textarea>
     </div>
+    <div id="adel-m-delete-row" style="display:none;margin-bottom:10px;">
+      <button onclick="adel_eliminarDesdeModal()" style="width:100%;padding:9px;border:1px solid #e05050;border-radius:10px;background:none;font-family:'Montserrat',sans-serif;font-size:12px;cursor:pointer;color:#c94040;">🗑 Eliminar adelanto</button>
+    </div>
     <div style="display:flex;gap:10px;">
       <button onclick="adel_cerrarModal()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:10px;background:none;font-family:'Montserrat',sans-serif;font-size:12px;cursor:pointer;color:var(--muted);">Cancelar</button>
-      <button onclick="adel_guardarDesdeModal()" style="flex:2;padding:10px;border:none;border-radius:10px;background:#e8c06a;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:600;cursor:pointer;color:#5a3a00;">Solicitar adelanto</button>
+      <button id="adel-m-save-btn" onclick="adel_guardarDesdeModal()" style="flex:2;padding:10px;border:none;border-radius:10px;background:#e8c06a;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:600;cursor:pointer;color:#5a3a00;">Solicitar adelanto</button>
     </div>
   </div>
 </div>
@@ -2790,7 +2793,10 @@ function renderAdelantosPendientes() {
           </div>
         </div>
         <div style="flex-shrink:0;text-align:right;">
-          ${adelEstadoBtn(a.sesId, a.id, estadoNorm)}
+          <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">
+            ${adelEstadoBtn(a.sesId, a.id, estadoNorm)}
+            <button onclick="event.stopPropagation();adel_abrirModalEditar('${a.sesId}','${a.id}')" title="Editar adelanto" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;line-height:1;color:var(--muted);">✏️</button>
+          </div>
           ${notaBtn}
         </div>
       </div>
@@ -2828,9 +2834,14 @@ function adel_confirmarEnvio(sesId, adelId) {
 }
 
 let _adelModalSesPreselect = null;
+let _adelEditSesId = null, _adelEditAdelId = null;
 
 function adel_abrirModalNuevo(sesId) {
-  _adelModalSesPreselect = sesId;
+  _adelEditSesId = null; _adelEditAdelId = null;
+  document.getElementById('adel-m-title').textContent = 'Solicitar adelanto de fotos';
+  document.getElementById('adel-m-save-btn').textContent = 'Solicitar adelanto';
+  document.getElementById('adel-m-sesion-row').style.display = '';
+  document.getElementById('adel-m-delete-row').style.display = 'none';
   const sel = document.getElementById('adel-m-sesion');
   if (sel) {
     const activas = (clientes || []).filter(c => !estaTerminadoFn(c));
@@ -2838,25 +2849,61 @@ function adel_abrirModalNuevo(sesId) {
       `<option value="${c.id}" ${c.id === sesId ? 'selected' : ''}>${c.bebe}${c.mama ? ' · ' + c.mama : ''}</option>`
     ).join('');
   }
-  const fi = document.getElementById('adel-m-cant'); if (fi) fi.value = '';
-  const fd = document.getElementById('adel-m-fecha'); if (fd) fd.value = '';
-  const fn = document.getElementById('adel-m-nota'); if (fn) fn.value = '';
+  document.getElementById('adel-m-cant').value = '';
+  document.getElementById('adel-m-fecha').value = '';
+  document.getElementById('adel-m-nota').value = '';
+  document.getElementById('adel-modal').classList.add('open');
+}
+
+function adel_abrirModalEditar(sesId, adelId) {
+  const ses = (clientes || []).find(c => c.id === sesId);
+  const adel = (ses?.adelantos || []).find(a => a.id === adelId);
+  if (!adel) return;
+  _adelEditSesId = sesId; _adelEditAdelId = adelId;
+  document.getElementById('adel-m-title').textContent = `Editar adelanto — ${ses.bebe||''}`;
+  document.getElementById('adel-m-save-btn').textContent = 'Guardar cambios';
+  document.getElementById('adel-m-sesion-row').style.display = 'none';
+  document.getElementById('adel-m-delete-row').style.display = '';
+  document.getElementById('adel-m-cant').value = adel.cantFotos || '';
+  document.getElementById('adel-m-fecha').value = adel.fechaLimite || '';
+  document.getElementById('adel-m-nota').value = adel.nota || '';
   document.getElementById('adel-modal').classList.add('open');
 }
 
 function adel_cerrarModal() {
   document.getElementById('adel-modal').classList.remove('open');
+  _adelEditSesId = null; _adelEditAdelId = null;
 }
 
 function adel_guardarDesdeModal() {
-  const sesId = document.getElementById('adel-m-sesion')?.value;
   const cant = parseInt(document.getElementById('adel-m-cant')?.value || '0');
   const fecha = document.getElementById('adel-m-fecha')?.value || '';
   const nota = document.getElementById('adel-m-nota')?.value?.trim() || '';
-  if (!sesId || !cant || !fecha) { alert('Completá sesión, cantidad de fotos y fecha límite.'); return; }
-  const adelanto = { id: 'adel-' + Date.now(), cantFotos: cant, nota, fechaLimite: fecha, estado: 'pendiente', creadoEn: new Date().toISOString() };
-  _adelAddToSesion(sesId, adelanto);
+  if (!cant || !fecha) { alert('Completá cantidad de fotos y fecha límite.'); return; }
+  if (_adelEditSesId && _adelEditAdelId) {
+    _adelUpdateOnSesion(_adelEditSesId, _adelEditAdelId, { cantFotos: cant, fechaLimite: fecha, nota });
+  } else {
+    const sesId = document.getElementById('adel-m-sesion')?.value;
+    if (!sesId) { alert('Elegí una sesión.'); return; }
+    const adelanto = { id: 'adel-' + Date.now(), cantFotos: cant, nota, fechaLimite: fecha, estado: 'edicion_renu', creadoEn: new Date().toISOString() };
+    _adelAddToSesion(sesId, adelanto);
+  }
   adel_cerrarModal();
+}
+
+function adel_eliminarDesdeModal() {
+  if (!_adelEditSesId || !_adelEditAdelId) return;
+  if (!confirm('¿Eliminar este adelanto?')) return;
+  _adelDeleteOnSesion(_adelEditSesId, _adelEditAdelId);
+  adel_cerrarModal();
+}
+
+function _adelDeleteOnSesion(sesId, adelId) {
+  const idx = clientes.findIndex(c => c.id === sesId);
+  if (idx === -1) return;
+  clientes[idx].adelantos = (clientes[idx].adelantos || []).filter(a => a.id !== adelId);
+  marcarCambio(sesId);
+  window.__renuSave(clientes);
 }
 
 function adel_solicitarDesdeSesion(sesId) {
