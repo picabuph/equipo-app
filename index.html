@@ -414,6 +414,13 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   <div class="container" id="app"></div>
 </div>
 <div class="page" id="page-diseno">
+  <div class="container" style="display:flex;justify-content:flex-end;padding:4px 14px 0;max-width:800px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:4px;background:var(--white);border:1px solid var(--border);border-radius:20px;padding:4px 10px;">
+      <span style="font-size:13px;color:var(--muted);">🔍</span>
+      <input id="search-diseno-eq" type="text" oninput="filtroSearchDiseno=this.value;renderDiseno();document.getElementById('search-diseno-eq-x').style.display=this.value?'inline':'none';" style="border:none;outline:none;background:none;font-size:12px;font-family:inherit;color:var(--marron);width:120px;">
+      <span id="search-diseno-eq-x" onclick="filtroSearchDiseno='';document.getElementById('search-diseno-eq').value='';this.style.display='none';renderDiseno();" style="display:none;cursor:pointer;font-size:13px;color:var(--muted);line-height:1;">✕</span>
+    </div>
+  </div>
   <div class="container" id="diseno-container"></div>
 </div>
 
@@ -629,6 +636,7 @@ const PEDIDOS_ANGIE_SIMULADOS = [];
 let clientes = [];
 let filtroSearchSesiones = '';
 let filtroSoloVideo = false;
+let filtroSearchDiseno = '';
 
 let editandoIdx = null;
 let confirmandoIdx = null;
@@ -2737,7 +2745,12 @@ function deadlinePedidoD(p) {
 
 function renderDiseno() {
   const el = document.getElementById('diseno-container');
-  const todos = PEDIDOS_ANGIE_SIMULADOS.filter(p => (p.prods||[]).some(x => x.estado !== 'Entregado'));
+  const qD = filtroSearchDiseno.toLowerCase().trim();
+  const todos = PEDIDOS_ANGIE_SIMULADOS.filter(p => {
+    if ((p.prods||[]).every(x => x.estado === 'Entregado')) return false;
+    if (qD) return (p.bebe||'').toLowerCase().includes(qD) || (p.mama||'').toLowerCase().includes(qD);
+    return true;
+  });
   const todosTodos = getDisenoOrdenado(todos);
   const listos   = todosTodos.filter(p => {
     const vis = p.prods.filter(x=>x.estado!=='Entregado'&&!x.soloWA&&!esPlantillaD(x.nombre));
@@ -2844,7 +2857,7 @@ function renderDiseno() {
 
   // Lista agrupada por estado
   const gruposAngie = { pendiente_diseno: [], pendiente_cliente: [], produccion: [], listo: [] };
-  PEDIDOS_ANGIE_SIMULADOS.filter(p => !todosEntregados(p)).forEach(p => {
+  todos.filter(p => !todosEntregados(p)).forEach(p => {
     gruposAngie[clasificarPedidoD(p)].push(p);
   });
   Object.values(gruposAngie).forEach(arr => arr.sort((a,b) => deadlinePedidoD(a).localeCompare(deadlinePedidoD(b))));
