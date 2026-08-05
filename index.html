@@ -793,10 +793,20 @@ function reintentarTodos() {
 }
 
 let _ignorarSnapshotRenu = false;
+const _pageLoadTs = Date.now();
 let _fbAngieConectado = false;
 let _angieLastSync = { ts: null, tsStr: '' };
 let _fbConectadaTs = null; // última vez que Firebase respondió (cualquier documento)
 let _lastSaveTs = null; // última vez que SE GUARDÓ algo (cualquier dato)
+// Carga instantánea desde caché local (Firebase actualizará en background)
+(function() {
+  try {
+    const ca = localStorage.getItem('eq_angie_cache');
+    const cr = localStorage.getItem('eq_renu_cache');
+    if (ca) { PEDIDOS_ANGIE_SIMULADOS.splice(0,0,...JSON.parse(ca)); _fbAngieConectado = true; }
+    if (cr) clientes.splice(0,0,...JSON.parse(cr));
+  } catch(e) {}
+})();
 let _terminadosOpen = localStorage.getItem('eq_terminados_open') !== 'false';
 function toggleTerminados() {
   _terminadosOpen = !_terminadosOpen;
@@ -827,6 +837,7 @@ setTimeout(function() {
 
 window.__angieUpdate = function(lista, updated) {
   PEDIDOS_ANGIE_SIMULADOS.splice(0, PEDIDOS_ANGIE_SIMULADOS.length, ...lista);
+  try { localStorage.setItem('eq_angie_cache', JSON.stringify(lista)); } catch(e) {}
   _fbAngieConectado = true;
   _fbConectadaTs = new Date(); // marca conexión activa
   const ts = updated ? new Date(updated) : new Date();
@@ -845,6 +856,7 @@ window.__renuLoad = function(lista) {
   _fbConectadaTs = new Date(); // marca conexión activa
   if (lista && lista.length) {
     clientes.splice(0, clientes.length, ...lista);
+    try { localStorage.setItem('eq_renu_cache', JSON.stringify(lista)); } catch(e) {}
     _migrarFechasGaleria();
     autoSync();
     _syncCalendarDates(); // si el calendario ya cargó, sincronizar fechas reprogramadas
@@ -1252,7 +1264,7 @@ function renderApp() {
   html += `<div style="font-size:10px;color:var(--muted);text-align:right;padding:0 2px 8px;letter-spacing:0.3px;">${syncTxt}</div>`;
 
   if (!clientes.length) {
-    html += `<div style="text-align:center;color:var(--muted);font-size:13px;padding:40px 20px;">${_fbAngieConectado ? 'No hay sesiones todavía. Usá la pestaña + Carga para agregar.' : 'Conectando a Firebase…'}</div>`;
+    html += `<div style="text-align:center;color:var(--muted);font-size:13px;padding:40px 20px;">${_fbAngieConectado ? 'No hay sesiones todavía. Usá la pestaña + Carga para agregar.' : (Date.now()-_pageLoadTs>2000?'Conectando a Firebase…':'')}</div>`;
   }
 
   if (alertas15.length > 0) {
