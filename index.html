@@ -600,6 +600,44 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   </div>
 </div>
 
+<div class="overlay" id="ent-edit-modal" onclick="if(event.target===this)ent_cerrarEditar()">
+  <div class="mbox">
+    <div class="mbox-title">Editar entregables</div>
+    <div class="fl">
+      <label>Nombre del bebé / sesión</label>
+      <input type="text" id="ent-edit-bebe" autocomplete="off">
+    </div>
+    <div class="fl">
+      <label>Nombre de la mamá</label>
+      <input type="text" id="ent-edit-mama" autocomplete="off">
+    </div>
+    <div class="fl">
+      <label>Paquete</label>
+      <input type="text" id="ent-edit-paquete" autocomplete="off">
+    </div>
+    <div class="fl">
+      <label>Fecha confirmación de fotos</label>
+      <input type="date" id="ent-edit-conf">
+    </div>
+    <div class="fl">
+      <label>Fecha límite entrega — 30 días (editable)</label>
+      <input type="date" id="ent-edit-fecha">
+    </div>
+    <div class="fl">
+      <label>Cantidad de fotos elegidas</label>
+      <input type="number" id="ent-edit-cant" placeholder="Ej: 40" min="1">
+    </div>
+    <div class="fl">
+      <label>Notas para Renu</label>
+      <textarea id="ent-edit-notas" rows="3" placeholder="Ej: el cliente eligió las fotos del set verde"></textarea>
+    </div>
+    <div class="mbox-btns">
+      <button class="btn-sec" onclick="ent_cerrarEditar()">Cancelar</button>
+      <button class="btn-pri" onclick="ent_guardarEditar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 
 // ─── CONFIGURACIÓN ────────────────────────────────────────────
@@ -689,6 +727,7 @@ function _getEffectivePrio(c) {
   return 99;
 }
 function _fechaSort(c) {
+  if (c.entregables && c.entregables.fechaLimite) return c.entregables.fechaLimite;
   if (c.fechaLimite) return c.fechaLimite;
   if (c.fechaConfirmacion) return c.fechaConfirmacion;
   if (c.fechaEnvioGaleria) return c.fechaEnvioGaleria;
@@ -1308,6 +1347,11 @@ function renderApp() {
     }
   });
 
+  grupoOrder.sort((a, b) => {
+    const pa = _ESTADO_PRIO_DEFAULT[a] ?? 99;
+    const pb = _ESTADO_PRIO_DEFAULT[b] ?? 99;
+    return pa - pb;
+  });
   let firstGrupo = true;
   grupoOrder.forEach(gk => {
     const grupo = grupoMap[gk];
@@ -1315,12 +1359,17 @@ function renderApp() {
     if (!firstGrupo) html += `<div style="height:14px;"></div>`;
     firstGrupo = false;
     html += `<div class="grupo-label"><span>${_getGrupoLabel(gk)}</span></div>`;
-    grupo.sessions.forEach(c => {
-      html += renderCard(c, clientes.indexOf(c), false, false);
-      if (_entGrupoKey(c) === gk) html += renderEntregablesCard(c);
-    });
-    grupo.orphans.forEach(c => {
-      html += renderEntregablesCard(c);
+    const allItems = [
+      ...grupo.sessions.map(c => ({c, isOrphan: false})),
+      ...grupo.orphans.map(c => ({c, isOrphan: true}))
+    ].sort((a, b) => _fechaSort(a.c).localeCompare(_fechaSort(b.c)));
+    allItems.forEach(({c, isOrphan}) => {
+      if (!isOrphan) {
+        html += renderCard(c, clientes.indexOf(c), false, false);
+        if (_entGrupoKey(c) === gk) html += renderEntregablesCard(c);
+      } else {
+        html += renderEntregablesCard(c);
+      }
     });
   });
 
@@ -1503,7 +1552,7 @@ function renderEntregablesCard(c) {
   if (!ent || (!ent.video && !ent.packFotos)) return '';
   const estado = ent.estado || 'edicion_renu';
   const e = getEstadoInfo(estado);
-  const fechaEntrega = c.fechaLimite || (c.fechaSesion ? calcLimite(c.fechaSesion, 30) : null);
+  const fechaEntrega = ent.fechaLimite || c.fechaLimite || (c.fechaSesion ? calcLimite(c.fechaSesion, 30) : null);
   let fechaHtml = '';
   if (fechaEntrega) {
     const dE = diasHasta(fechaEntrega);
@@ -1515,6 +1564,7 @@ function renderEntregablesCard(c) {
   }
   const items = [ent.video ? 'Video de backstage' : null, ent.packFotos ? 'Pack de fotos sin editar' : null].filter(Boolean);
   const itemsHtml = items.map(it => `<div class="c-info-item"><span class="c-info-label" style="color:var(--muted);">Entregable</span><span class="c-info-val">${it}</span></div>`).join('');
+  const notasHtml = ent.notas ? `<div class="c-notas" style="margin-top:6px;">${ent.notas}</div>` : '';
   const ENTS = ['pendiente_cliente','edicion_renu','edicion_terminada','subidas'];
   const popOpts = ENTS.map(id => {
     const ei = getEstadoInfo(id);
@@ -1526,13 +1576,14 @@ function renderEntregablesCard(c) {
         <div class="c-bebe-row"><span class="c-bebe">${c.bebe||'—'}</span>${c.mama?`<span class="c-mama-inline">${c.mama}</span>`:''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:4px;line-height:1;border-radius:6px;" onclick="ent_abrirEditar('${c.id}')" title="Editar entregables">✏️</button>
         <div class="estado-wrap">
           <button class="estado-btn" style="background:${e.bg};" onclick="event.stopPropagation();entregables_togglePop('${c.id}',this)"><span class="estado-btn-lbl">${e.label}</span><span class="estado-btn-chv"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="#5a4a42" stroke-width="1.5" fill="none"/></svg></span></button>
           <div class="estado-pop" id="entpop-${c.id}"><div class="estado-opts">${popOpts}</div></div>
         </div>
       </div>
     </div>
-    <div class="c-body"><div class="c-info-row">${fechaHtml}${itemsHtml}</div></div>
+    <div class="c-body"><div class="c-info-row">${fechaHtml}${itemsHtml}</div>${notasHtml}</div>
   </div>`;
 }
 function entregables_togglePop(sesId, btn) {
@@ -1556,6 +1607,43 @@ function entregables_cambiarEstado(sesId, nuevoEstado) {
   if (!clientes[idx].entregables) clientes[idx].entregables = {};
   clientes[idx].entregables.estado = nuevoEstado;
   marcarCambio(sesId);
+  renderApp();
+}
+let _entEditSesId = null;
+function ent_abrirEditar(sesId) {
+  const c = clientes.find(x => x.id === sesId);
+  if (!c) return;
+  _entEditSesId = sesId;
+  const ent = c.entregables || {};
+  const fechaAutoLimite = c.fechaLimite || (c.fechaSesion ? calcLimite(c.fechaSesion, 30) : null);
+  document.getElementById('ent-edit-bebe').value = c.bebe || '';
+  document.getElementById('ent-edit-mama').value = c.mama || '';
+  document.getElementById('ent-edit-paquete').value = c.paquete || '';
+  document.getElementById('ent-edit-conf').value = c.fechaConfirmacion || '';
+  document.getElementById('ent-edit-fecha').value = ent.fechaLimite || fechaAutoLimite || '';
+  document.getElementById('ent-edit-cant').value = c.cantFotos || '';
+  document.getElementById('ent-edit-notas').value = ent.notas || '';
+  document.getElementById('ent-edit-modal').classList.add('open');
+}
+function ent_cerrarEditar() {
+  document.getElementById('ent-edit-modal').classList.remove('open');
+  _entEditSesId = null;
+}
+function ent_guardarEditar() {
+  if (!_entEditSesId) return;
+  const idx = clientes.findIndex(c => c.id === _entEditSesId);
+  if (idx < 0) return;
+  const c = clientes[idx];
+  c.bebe = document.getElementById('ent-edit-bebe').value.trim() || c.bebe;
+  c.mama = document.getElementById('ent-edit-mama').value.trim() || null;
+  c.paquete = document.getElementById('ent-edit-paquete').value.trim() || null;
+  c.fechaConfirmacion = document.getElementById('ent-edit-conf').value || null;
+  c.cantFotos = parseInt(document.getElementById('ent-edit-cant').value) || null;
+  if (!c.entregables) c.entregables = {};
+  c.entregables.fechaLimite = document.getElementById('ent-edit-fecha').value || null;
+  c.entregables.notas = document.getElementById('ent-edit-notas').value.trim() || null;
+  marcarCambio(_entEditSesId);
+  ent_cerrarEditar();
   renderApp();
 }
 
