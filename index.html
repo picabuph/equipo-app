@@ -1802,6 +1802,7 @@ function _matchPedido(c) {
 
 function marcarVideo(idx) {
   clientes[idx].tareaVideoHecho = true;
+  clientes[idx].tareaVideoHechoTs = Date.now();
   marcarCambio(clientes[idx].id);
   const pedido = _matchPedido(clientes[idx]);
   if (pedido) { pedido.videoHecho = true; if (typeof window.__angieSave === 'function') window.__angieSave(PEDIDOS_ANGIE_SIMULADOS); }
