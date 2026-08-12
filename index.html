@@ -1200,6 +1200,13 @@ function eq_marcarContactado(id, checked) {
   renderApp();
 }
 
+let _eq_enviadoAngie = (() => { try { return JSON.parse(localStorage.getItem('equipo_enviado_angie')||'{}'); } catch(e) { return {}; } })();
+function eq_marcarEnviadoAngie(id, checked) {
+  if (checked) _eq_enviadoAngie[id] = { ts: Date.now() }; else delete _eq_enviadoAngie[id];
+  localStorage.setItem('equipo_enviado_angie', JSON.stringify(_eq_enviadoAngie));
+  renderApp();
+}
+
 function cambiarEstadoInline(idx, nuevoEstado) {
   const c = clientes[idx];
   const estadoAnterior = c.estado;
@@ -1313,6 +1320,22 @@ function renderApp() {
         <input type="checkbox" onchange="eq_marcarContactado('${c.id}',this.checked)" style="accent-color:#9a6400;width:14px;height:14px;cursor:pointer;flex-shrink:0;" title="Marcar como contactado (reaparece en 48h si no cambia el estado)">
         <span>${c.bebe} (${c.mama}) — ${diasDesde(c.fechaEnvioGaleria)} días sin respuesta</span>
       </div>`).join('')}
+    </div>`;
+  }
+
+  // Recordatorio: pendiente de enviar JPGs a Angie
+  const _ESTADOS_ENVIAR_ANGIE = ['edicion_terminada', 'para_subir', 'subidas'];
+  const _pendientesAngie = clientes.filter(c => _ESTADOS_ENVIAR_ANGIE.includes(c.estado) && !_eq_enviadoAngie[c.id]);
+  if (_pendientesAngie.length) {
+    html += `<div class="alerta-15">
+      <div class="alerta-15-titulo">📤 Pendiente de enviar JPGs a Angie</div>
+      ${_pendientesAngie.map(c => {
+        const label = ESTADO_LABEL_DEFAULT[c.estado] || c.estado;
+        return `<div class="alerta-15-item">
+          <input type="checkbox" onchange="eq_marcarEnviadoAngie('${c.id}',this.checked)" style="accent-color:#9a6400;width:14px;height:14px;cursor:pointer;flex-shrink:0;" title="Tildá cuando ya le enviaste los JPGs a Angie">
+          <span>${c.bebe} (${c.mama}) — ${label}</span>
+        </div>`;
+      }).join('')}
     </div>`;
   }
 
