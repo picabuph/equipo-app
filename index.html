@@ -616,8 +616,16 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       <input type="text" id="ent-edit-paquete" autocomplete="off">
     </div>
     <div class="fl">
+      <label>Fecha envío galería al cliente</label>
+      <input type="date" id="ent-edit-galeria">
+    </div>
+    <div class="fl">
       <label>Fecha confirmación de fotos</label>
       <input type="date" id="ent-edit-conf">
+    </div>
+    <div class="fl">
+      <label>Fecha entrega fotos (subidas)</label>
+      <input type="date" id="ent-edit-subida">
     </div>
     <div class="fl">
       <label>Fecha límite entrega — 30 días (editable)</label>
@@ -630,6 +638,10 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
     <div class="fl">
       <label>Notas para Renu</label>
       <textarea id="ent-edit-notas" rows="3" placeholder="Ej: el cliente eligió las fotos del set verde"></textarea>
+    </div>
+    <div class="fl" style="flex-direction:row;align-items:center;gap:10px;padding:6px 0;">
+      <input type="checkbox" id="ent-edit-excluir" style="width:16px;height:16px;accent-color:#9a6400;cursor:pointer;flex-shrink:0;">
+      <label for="ent-edit-excluir" style="font-size:12px;color:var(--muted);cursor:pointer;margin:0;">Excluir de estadísticas (datos incorrectos)</label>
     </div>
     <div class="mbox-btns">
       <button class="btn-sec" onclick="ent_cerrarEditar()">Cancelar</button>
@@ -1642,10 +1654,13 @@ function ent_abrirEditar(sesId) {
   document.getElementById('ent-edit-bebe').value = c.bebe || '';
   document.getElementById('ent-edit-mama').value = c.mama || '';
   document.getElementById('ent-edit-paquete').value = c.paquete || '';
+  document.getElementById('ent-edit-galeria').value = c.fechaEnvioGaleria || '';
   document.getElementById('ent-edit-conf').value = c.fechaConfirmacion || '';
+  document.getElementById('ent-edit-subida').value = c.fechaSubida || '';
   document.getElementById('ent-edit-fecha').value = ent.fechaLimite || fechaAutoLimite || '';
   document.getElementById('ent-edit-cant').value = c.cantFotos || '';
   document.getElementById('ent-edit-notas').value = ent.notas || '';
+  document.getElementById('ent-edit-excluir').checked = c.excluirStats || false;
   document.getElementById('ent-edit-modal').classList.add('open');
 }
 function ent_cerrarEditar() {
@@ -1660,8 +1675,11 @@ function ent_guardarEditar() {
   c.bebe = document.getElementById('ent-edit-bebe').value.trim() || c.bebe;
   c.mama = document.getElementById('ent-edit-mama').value.trim() || null;
   c.paquete = document.getElementById('ent-edit-paquete').value.trim() || null;
+  c.fechaEnvioGaleria = document.getElementById('ent-edit-galeria').value || null;
   c.fechaConfirmacion = document.getElementById('ent-edit-conf').value || null;
+  c.fechaSubida = document.getElementById('ent-edit-subida').value || null;
   c.cantFotos = parseInt(document.getElementById('ent-edit-cant').value) || null;
+  c.excluirStats = document.getElementById('ent-edit-excluir').checked || false;
   if (!c.entregables) c.entregables = {};
   c.entregables.fechaLimite = document.getElementById('ent-edit-fecha').value || null;
   c.entregables.notas = document.getElementById('ent-edit-notas').value.trim() || null;
@@ -2726,10 +2744,36 @@ function renderStats() {
   function fmtD(n) { return (n !== null && n !== undefined) ? `${n}d` : '—'; }
 
   const historial = typeof window.__getHistorial === 'function' ? window.__getHistorial() : [];
-  const todas = [
+  const todasSinFiltro = [
     ...clientes.map(c => ({ ...c, _activa: true })),
     ...historial.map(h => ({ ...h, _activa: false }))
-  ];
+  ].filter(c => !c.excluirStats);
+
+  // Meses disponibles (basados en fechaSesion o fechaSubida)
+  const _availMesesSet = new Set();
+  todasSinFiltro.forEach(c => {
+    const f = c.fechaSesion || c.fechaSubida;
+    if (f) _availMesesSet.add(f.slice(0, 7));
+  });
+  const _availMeses = [..._availMesesSet].sort().reverse();
+  if (window._statsMes === undefined) window._statsMes = null;
+
+  const todas = window._statsMes
+    ? todasSinFiltro.filter(c => {
+        const f = c.fechaSesion || c.fechaSubida;
+        return f && f.startsWith(window._statsMes);
+      })
+    : todasSinFiltro;
+
+  const _fmtMesSel = ym => { const [y,m] = ym.split('-'); const names=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return `${names[parseInt(m)-1]} ${y}`; };
+  const selectorMesHtml = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <span style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;">Ver estadísticas de</span>
+    <select onchange="window._statsMes=this.value||null;renderStats()" style="border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;font-family:inherit;background:var(--white);color:var(--text);">
+      <option value="" ${!window._statsMes?'selected':''}>Global (todas las sesiones)</option>
+      ${_availMeses.map(m=>`<option value="${m}" ${window._statsMes===m?'selected':''}>${_fmtMesSel(m)}</option>`).join('')}
+    </select>
+    ${window._statsMes?`<span style="font-size:11px;color:var(--muted);">${todas.length} sesión${todas.length!==1?'es':''} en este mes</span>`:''}
+  </div>`;
 
   const d_sesGal  = todas.map(c => diffDias(c.fechaSesion, c.fechaEnvioGaleria)).filter(d => d !== null);
   const d_galConf = todas.map(c => diffDias(c.fechaEnvioGaleria, c.fechaConfirmacion)).filter(d => d !== null);
@@ -2834,7 +2878,7 @@ function renderStats() {
       </details>`;
     }).join('')}` : '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">No hay sesiones todavía.</div>';
 
-  document.getElementById('stats-container').innerHTML = `<div style="padding-bottom:40px;">${promediosHTML}${histogramaHTML}${tablaHTML}</div>`;
+  document.getElementById('stats-container').innerHTML = `<div style="padding-bottom:40px;">${selectorMesHtml}${promediosHTML}${histogramaHTML}${tablaHTML}</div>`;
 }
 
 
