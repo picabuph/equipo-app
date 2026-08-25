@@ -1449,8 +1449,8 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
 
   let info = '';
 
-  // Fecha de entrega (primer dato visible) — solo en cards activos, no en entregadas
-  if (!compacto) {
+  // Fecha de entrega (primer dato visible) — solo en cards activos, no en entregadas ni subidas
+  if (!compacto && c.estado !== 'subidas') {
     let fechaEntrega = null;
     if (c.fechaLimite) {
       fechaEntrega = c.fechaLimite;
