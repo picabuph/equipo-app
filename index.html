@@ -2854,12 +2854,13 @@ function renderStats() {
         const d2 = diffDias(c.fechaEnvioGaleria, c.fechaConfirmacion);
         const d3 = diffDias(c.fechaConfirmacion, c.fechaSubida);
         const dtotal = diffDias(c.fechaSesion, c.fechaSubida);
-        return `<div class="stats-fila" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr;${!c._activa?'opacity:0.5;':''}">
+        return `<div class="stats-fila" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr 28px;${!c._activa?'opacity:0.5;':''}">
           <div class="stats-col-nombre">${c.bebe||'—'}<br><span style="font-size:10px;color:var(--muted);font-weight:400;">${c.mama||''}</span></div>
           <div class="stats-col-num">${fmtD(d1)}</div>
           <div class="stats-col-num">${fmtD(d2)}</div>
           <div class="stats-col-num">${fmtD(d3)}</div>
           <div class="stats-col-num">${fmtD(dtotal)}</div>
+          <div style="display:flex;align-items:center;justify-content:center;"><button onclick="stats_excluir('${c.id}')" title="Eliminar de estadísticas" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--muted);padding:2px;line-height:1;">✕</button></div>
         </div>`;
       }).join('');
       return `<details style="margin-bottom:6px;">
@@ -2870,8 +2871,8 @@ function renderStats() {
           <span style="color:var(--muted);font-size:11px;">▾</span>
         </summary>
         <div style="margin-top:3px;" class="stats-tabla">
-          <div class="stats-header" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr;">
-            <div>Bebé</div><div>Ses.→Gal.</div><div>Gal.→Eleg.</div><div>Eleg.→Entrega</div><div>Total</div>
+          <div class="stats-header" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr 28px;">
+            <div>Bebé</div><div>Ses.→Gal.</div><div>Gal.→Eleg.</div><div>Eleg.→Entrega</div><div>Total</div><div></div>
           </div>
           ${filasMes}
         </div>
@@ -2881,6 +2882,15 @@ function renderStats() {
   document.getElementById('stats-container').innerHTML = `<div style="padding-bottom:40px;">${selectorMesHtml}${promediosHTML}${histogramaHTML}${tablaHTML}</div>`;
 }
 
+
+function stats_excluir(sesId) {
+  const lista = [...clientes, ...historial];
+  const c = lista.find(x => x.id === sesId);
+  if (!c) return;
+  c.excluirStats = true;
+  marcarCambio(sesId);
+  renderStats();
+}
 
 function todosEntregados(p) {
   const vis = (p.prods||[]).filter(x => !x.soloWA && !esPlantillaD(x.nombre) && !esHojaExtraD(x.nombre));
