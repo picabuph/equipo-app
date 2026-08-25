@@ -2863,7 +2863,8 @@ function renderStats() {
           <div style="display:flex;align-items:center;justify-content:center;"><button onclick="stats_excluir('${c.id}')" title="Eliminar de estadísticas" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--muted);padding:2px;line-height:1;">✕</button></div>
         </div>`;
       }).join('');
-      return `<details style="margin-bottom:6px;">
+      const openAttr = (window._statsOpenMeses||{})[key] === true ? 'open' : '';
+      return `<details ${openAttr} data-mes="${key}" style="margin-bottom:6px;">
         <summary style="list-style:none;-webkit-appearance:none;cursor:pointer;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:10px;">
           <span style="font-weight:600;color:var(--marron-d);font-size:13px;flex:1;">${fmtMes(key)}</span>
           <span style="color:var(--muted);font-size:11px;">${ses.length} ses.</span>
@@ -2879,16 +2880,36 @@ function renderStats() {
       </details>`;
     }).join('')}` : '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">No hay sesiones todavía.</div>';
 
-  document.getElementById('stats-container').innerHTML = `<div style="padding-bottom:40px;">${selectorMesHtml}${promediosHTML}${histogramaHTML}${tablaHTML}</div>`;
+  const container = document.getElementById('stats-container');
+  // Preserve which months are open before re-rendering
+  const openMeses = {};
+  container.querySelectorAll('details[data-mes]').forEach(el => {
+    openMeses[el.dataset.mes] = el.open;
+  });
+  if (Object.keys(openMeses).length) window._statsOpenMeses = openMeses;
+  container.innerHTML = `<div style="padding-bottom:40px;">${selectorMesHtml}${promediosHTML}${histogramaHTML}${tablaHTML}</div>`;
+  // Attach toggle listeners to persist open state
+  container.querySelectorAll('details[data-mes]').forEach(el => {
+    el.addEventListener('toggle', () => {
+      if (!window._statsOpenMeses) window._statsOpenMeses = {};
+      window._statsOpenMeses[el.dataset.mes] = el.open;
+    });
+  });
 }
 
 
 function stats_excluir(sesId) {
-  const lista = [...clientes, ...historial];
-  const c = lista.find(x => x.id === sesId);
+  const hist = typeof window.__getHistorial === 'function' ? window.__getHistorial() : [];
+  const enClientes = clientes.find(x => x.id === sesId);
+  const enHistorial = hist.find(x => x.id === sesId);
+  const c = enClientes || enHistorial;
   if (!c) return;
   c.excluirStats = true;
-  marcarCambio(sesId);
+  if (enClientes) {
+    marcarCambio(sesId);
+  } else if (enHistorial && typeof window.__saveHistorialActual === 'function') {
+    window.__saveHistorialActual();
+  }
   renderStats();
 }
 
@@ -3383,8 +3404,10 @@ const REF_HISTORIAL = doc(db, 'equipo', 'historial');
 let _historial = [];
 window.__getHistorial = function() { return _historial; };
 
+function _histId() { return 'h_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
 window.__guardarHistorial = async function(entries) {
-  const lista = Array.isArray(entries) ? entries : [entries];
+  const lista = (Array.isArray(entries) ? entries : [entries]).map(e => e.id ? e : { ...e, id: _histId() });
   _historial = [..._historial, ...lista];
   try {
     await setDoc(REF_HISTORIAL, { lista: _historial, updated: new Date().toISOString() });
@@ -3393,9 +3416,28 @@ window.__guardarHistorial = async function(entries) {
   } catch(e) { console.warn('[historial] error guardando:', e); }
 };
 
+let _ignorarSnapshotHistorial = false;
+window.__saveHistorialActual = async function() {
+  _ignorarSnapshotHistorial = true;
+  try {
+    await setDoc(REF_HISTORIAL, { lista: _historial, updated: new Date().toISOString() });
+    if (document.getElementById('stats-container') && typeof window.renderStats === 'function') window.renderStats();
+  } catch(e) { console.warn('[historial] error guardando:', e); }
+  _ignorarSnapshotHistorial = false;
+};
+
 onSnapshot(REF_HISTORIAL, snap => {
+  if (_ignorarSnapshotHistorial) return;
   if (snap.exists() && snap.data()?.lista) {
-    _historial = snap.data().lista;
+    const cargado = snap.data().lista;
+    const sinId = cargado.filter(e => !e.id);
+    if (sinId.length) {
+      sinId.forEach(e => { e.id = _histId(); });
+      _historial = cargado;
+      setDoc(REF_HISTORIAL, { lista: _historial, updated: new Date().toISOString() }).catch(e => console.warn('[historial] backfill error:', e));
+    } else {
+      _historial = cargado;
+    }
     if (document.getElementById('stats-container') && typeof window.renderStats === 'function') window.renderStats();
   }
 }, err => console.warn('[historial] snapshot error:', err));
