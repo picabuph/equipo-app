@@ -3067,6 +3067,11 @@ function renderDiseno() {
 }
 
 // Init
+const _ADEL_ESTADOS = [
+  { id: 'edicion_renu',      label: 'Edición Renu',       bg: '#d4b3d7' },
+  { id: 'edicion_terminada', label: 'Edición terminada',  bg: '#c4a0c7' },
+  { id: 'subidas',           label: 'Subidas ✓',          bg: '#d4edda' },
+];
 inyectarEstilosCustom();
 autoSync();
 renderApp();
@@ -3102,12 +3107,6 @@ function _adelAddToSesion(sesId, adelanto) {
   marcarCambio(sesId);
   renderApp();
 }
-
-const _ADEL_ESTADOS = [
-  { id: 'edicion_renu',      label: 'Edición Renu',       bg: '#d4b3d7' },
-  { id: 'edicion_terminada', label: 'Edición terminada',  bg: '#c4a0c7' },
-  { id: 'subidas',           label: 'Subidas ✓',          bg: '#d4edda' },
-];
 
 function adelEstadoBtn(sesId, adelId, estadoActual) {
   const allE = getEstadosEquipo();
