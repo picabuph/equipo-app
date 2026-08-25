@@ -1262,7 +1262,7 @@ function renderApp() {
   const qS = filtroSearchSesiones.toLowerCase().trim();
   const clientesFiltrados = qS ? clientes.filter(c => (c.bebe||'').toLowerCase().includes(qS) || (c.mama||'').toLowerCase().includes(qS)) : clientes;
 
-  const _esVideoActivoPendiente = c => c.tareaVideoPendiente && c.videoConfirmado && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar;
+  const _esVideoActivoPendiente = c => c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar;
   const clientesParaVer = filtroSoloVideo ? clientesFiltrados.filter(_esVideoActivoPendiente) : clientesFiltrados;
 
   const activas = getActivasOrdenadas(clientesParaVer.filter(c => !estaTerminadoFn(c)));
@@ -1509,7 +1509,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
 
   // Alerta 60 días video
   let alerta60 = '';
-  if (c.fechaLimite60 && c.tareaVideoPendiente && !c.tareaVideoHecho) {
+  if (c.fechaLimite60 && c.tareaVideoPendiente && !c.tareaVideoHecho && c.estado !== 'subidas') {
     const d60 = diasHasta(c.fechaLimite60);
     const col60 = d60 <= 10 ? '#c94040' : d60 <= 20 ? '#9a5000' : '#7a3a00';
     alerta60 = `<div class="alerta-60">
@@ -1535,7 +1535,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
     acciones += `<button class="btn-accion btn-accion-del" onclick="eliminarEntregada(${idx})">Eliminar</button>`;
   }
   // Botones de video — siempre visibles cuando hay tarea de video, sin importar modo compacto
-  if (c.tareaVideoPendiente && c.videoConfirmado && !c.sinVideo && !c.videoSinGrabar) {
+  if (c.tareaVideoPendiente && !c.sinVideo && !c.videoSinGrabar) {
     const btnPend = c.tareaVideoHecho
       ? `<button class="btn-accion btn-accion-video-off" onclick="deshacerVideo(${idx})" title="Volver a pendiente">🎬 Video pendiente</button>`
       : `<button class="btn-accion btn-accion-video" style="cursor:default;opacity:0.7" disabled>🎬 Video pendiente</button>`;
@@ -1558,7 +1558,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
         <div class="c-badges">
           ${c.paquete ? `<span class="badge-paquete">${c.paquete}</span>` : ''}
           ${c.tieneProductos ? '<span class="badge-prod">📦 Productos</span>' : ''}
-          ${c.tareaVideoPendiente && c.videoConfirmado && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar ? '<span class="badge-video">🎬 Video pendiente</span>' : ''}
+          ${c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar ? '<span class="badge-video">🎬 Video pendiente</span>' : ''}
           ${c.tareaVideoPendiente && c.tareaVideoHecho ? '<span class="badge-video" style="background:#d4f0e0;color:#2a6a47;">✓ Video hecho</span>' : ''}
           ${c.sinVideo ? '<span class="badge-video" style="background:var(--arena-l);color:var(--muted);">— Sin video</span>' : ''}
         </div>
@@ -1589,7 +1589,7 @@ function renderEntregablesCard(c) {
   const e = getEstadoInfo(estado);
   const fechaEntrega = ent.fechaLimite || c.fechaLimite || (c.fechaSesion ? calcLimite(c.fechaSesion, 30) : null);
   let fechaHtml = '';
-  if (fechaEntrega) {
+  if (fechaEntrega && estado !== 'subidas') {
     const dE = diasHasta(fechaEntrega);
     const bc = dE < 0 ? '#c94040' : dE <= 5 ? '#e05050' : dE <= 10 ? '#e0a030' : '#5cad80';
     const diasTxt = dE < 0 ? `<span style="font-size:11px;color:#c94040;margin-left:5px">(${Math.abs(dE)} días)</span>`
