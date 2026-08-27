@@ -865,6 +865,42 @@ function toggleTerminados() {
   renderApp();
 }
 
+let _terminadosSelC = new Set(); // ids de clientes seleccionados en Trabajos terminados
+let _terminadosSelA = new Set(); // ids de adelantos seleccionados en Trabajos terminados
+function toggleSelTerminadoCliente(id) {
+  if (_terminadosSelC.has(id)) _terminadosSelC.delete(id); else _terminadosSelC.add(id);
+  renderApp();
+}
+function toggleSelTerminadoAdelanto(adelId) {
+  if (_terminadosSelA.has(adelId)) _terminadosSelA.delete(adelId); else _terminadosSelA.add(adelId);
+  renderApp();
+}
+function eliminarSeleccionTerminados() {
+  const total = _terminadosSelC.size + _terminadosSelA.size;
+  if (!total) return;
+  if (!confirm(`¿Eliminar los ${total} trabajos seleccionados?`)) return;
+  const idsMarcar = [];
+  _terminadosSelC.forEach(id => {
+    const idx = clientes.findIndex(c => c.id === id);
+    if (idx >= 0) {
+      const c = clientes[idx];
+      if (typeof window.__guardarHistorial === 'function') window.__guardarHistorial([{ bebe:c.bebe, mama:c.mama, fechaSesion:c.fechaSesion||null, fechaEnvioGaleria:c.fechaEnvioGaleria||null, fechaConfirmacion:c.fechaConfirmacion||null, fechaSubida:c.fechaSubida||null, fechaEliminacion:hoy() }]);
+      clientes.splice(idx, 1);
+      idsMarcar.push(id);
+    }
+  });
+  _terminadosSelA.forEach(adelId => {
+    const ses = clientes.find(s => (s.adelantos||[]).some(a => a.id === adelId));
+    if (ses) {
+      ses.adelantos = ses.adelantos.filter(a => a.id !== adelId);
+      idsMarcar.push(ses.id);
+    }
+  });
+  idsMarcar.forEach(id => marcarCambio(id));
+  _terminadosSelC.clear(); _terminadosSelA.clear();
+  renderApp();
+}
+
 function marcarCambio(id) {
   if (typeof window.__renuSave === 'function') {
     setSyncStatus(id, 'saving');
@@ -1415,10 +1451,12 @@ function renderApp() {
 
   // ── Trabajos terminados (colapsable) ──
   if (terminadosMezclados.length > 0) {
+    const _selTotal = _terminadosSelC.size + _terminadosSelA.size;
     html += `<div class="seccion-sep"></div>
     <div class="seccion-header">
       <div class="seccion-titulo">Trabajos terminados</div>
       <span class="count-badge">${terminadosMezclados.length}</span>
+      ${_selTotal > 0 ? `<button class="btn-accion btn-accion-del" onclick="eliminarSeleccionTerminados()" style="margin-left:8px;">🗑 Eliminar (${_selTotal})</button>` : ''}
       <button class="toggle-entregadas" onclick="toggleTerminados()" style="margin-left:auto;" title="${_terminadosOpen?'Ocultar':'Mostrar'}">${_terminadosOpen?'▼ Ocultar':'▶ Mostrar'}</button>
     </div>`;
     if (_terminadosOpen) {
@@ -1540,7 +1578,6 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
   if (!compacto) {
     // sin botón "Galería enviada"
   } else {
-    acciones += `<button class="btn-accion" onclick="marcarVista(${idx})">${c.vista ? '✓ Vista' : 'Marcar vista'}</button>`;
     acciones += `<button class="btn-accion btn-accion-del" onclick="eliminarEntregada(${idx})">Eliminar</button>`;
   }
   // Botones de video — siempre visibles cuando hay tarea de video, sin importar modo compacto
@@ -1558,7 +1595,7 @@ function renderCard(c, idx, compacto = false, conDrag = false) {
 
   return `<div class="c-card${c.vista?' vista':''}" draggable="true" data-id="${c.id}">
     <div class="c-header">
-      <span class="drag-handle" title="Arrastrar para reordenar">⠿</span>
+      ${compacto ? `<input type="checkbox" onchange="toggleSelTerminadoCliente('${c.id}')" ${_terminadosSelC.has(c.id)?'checked':''} style="width:15px;height:15px;cursor:pointer;flex-shrink:0;accent-color:var(--marron);" title="Seleccionar para eliminar">` : `<span class="drag-handle" title="Arrastrar para reordenar">⠿</span>`}
       <div class="c-nombres">
         <div class="c-bebe-row">
           <span class="c-bebe">${c.bebe||'—'}</span>
@@ -1865,11 +1902,6 @@ function deshacerVideo(idx) {
   marcarCambio(clientes[idx].id);
   const pedido = _matchPedido(clientes[idx]);
   if (pedido) { pedido.videoHecho = false; if (typeof window.__angieSave === 'function') window.__angieSave(PEDIDOS_ANGIE_SIMULADOS); }
-  renderApp();
-}
-
-function marcarVista(idx) {
-  clientes[idx].vista = !clientes[idx].vista;
   renderApp();
 }
 
@@ -3275,9 +3307,21 @@ function renderAdelantosPendientes() {
   </div>`;
 }
 
+function adel_eliminarDirecto(sesId, adelId) {
+  const ses = clientes.find(s => s.id === sesId);
+  const adel = (ses?.adelantos || []).find(a => a.id === adelId);
+  if (!confirm(`¿Eliminar el adelanto de ${ses?.bebe || adel?.sesBebe || '—'}?`)) return;
+  if (!ses) return;
+  ses.adelantos = (ses.adelantos || []).filter(a => a.id !== adelId);
+  _terminadosSelA.delete(adelId);
+  marcarCambio(sesId);
+  renderApp();
+}
+
 function renderAdelTerminadaCard(a) {
   return `<div class="c-card">
     <div class="c-header">
+      <input type="checkbox" onchange="toggleSelTerminadoAdelanto('${a.id}')" ${_terminadosSelA.has(a.id)?'checked':''} style="width:15px;height:15px;cursor:pointer;flex-shrink:0;accent-color:var(--marron);" title="Seleccionar para eliminar">
       <div class="c-nombres">
         <div class="c-bebe-row">
           <span class="c-bebe">${a.sesBebe}</span>
@@ -3288,8 +3332,11 @@ function renderAdelTerminadaCard(a) {
         </div>
       </div>
       <div style="flex-shrink:0;text-align:right;">
-        <button onclick="event.stopPropagation();adel_abrirModalEditar('${a.sesId}','${a.id}')" title="Editar / eliminar adelanto" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;line-height:1;color:var(--muted);">✏️</button>
+        <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:4px;line-height:1;border-radius:6px;" onclick="event.stopPropagation();adel_abrirModalEditar('${a.sesId}','${a.id}')" title="Editar adelanto">✏️</button>
       </div>
+    </div>
+    <div class="c-footer">
+      <button class="btn-accion btn-accion-del" onclick="event.stopPropagation();adel_eliminarDirecto('${a.sesId}','${a.id}')">Eliminar</button>
     </div>
   </div>`;
 }
