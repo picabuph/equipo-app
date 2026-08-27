@@ -1267,6 +1267,11 @@ function renderApp() {
 
   const activas = getActivasOrdenadas(clientesParaVer.filter(c => !estaTerminadoFn(c)));
   const trabajosTerminados = filtroSoloVideo ? [] : clientesFiltrados.filter(c => estaTerminadoFn(c));
+  const adelantosTerminados = filtroSoloVideo ? [] : (typeof _adelGetAll === 'function' ? _adelGetAll().filter(a => ['enviado_angie','completado'].includes(a.estado)) : []);
+  const terminadosMezclados = [
+    ...trabajosTerminados.map(c => ({ tipo: 'cliente', item: c, fecha: c.fechaSubida || '' })),
+    ...adelantosTerminados.map(a => ({ tipo: 'adelanto', item: a, fecha: a.enviadoEn || a.creadoEn || '' })),
+  ].sort((x, y) => y.fecha.localeCompare(x.fecha));
 
   // Actualizar botón de filtro video
   const btnFV = document.getElementById('btn-filtro-video');
@@ -1409,14 +1414,18 @@ function renderApp() {
   });
 
   // ── Trabajos terminados (colapsable) ──
-  if (trabajosTerminados.length > 0) {
+  if (terminadosMezclados.length > 0) {
     html += `<div class="seccion-sep"></div>
     <div class="seccion-header">
       <div class="seccion-titulo">Trabajos terminados</div>
-      <span class="count-badge">${trabajosTerminados.length}</span>
+      <span class="count-badge">${terminadosMezclados.length}</span>
       <button class="toggle-entregadas" onclick="toggleTerminados()" style="margin-left:auto;" title="${_terminadosOpen?'Ocultar':'Mostrar'}">${_terminadosOpen?'▼ Ocultar':'▶ Mostrar'}</button>
     </div>`;
-    if (_terminadosOpen) trabajosTerminados.forEach(c => { html += renderCard(c, clientes.indexOf(c), true); });
+    if (_terminadosOpen) {
+      terminadosMezclados.forEach(({ tipo, item }) => {
+        html += tipo === 'cliente' ? renderCard(item, clientes.indexOf(item), true) : renderAdelTerminadaCard(item);
+      });
+    }
   }
 
   app.innerHTML = html;
@@ -3266,6 +3275,25 @@ function renderAdelantosPendientes() {
   </div>`;
 }
 
+function renderAdelTerminadaCard(a) {
+  return `<div class="c-card">
+    <div class="c-header">
+      <div class="c-nombres">
+        <div class="c-bebe-row">
+          <span class="c-bebe">${a.sesBebe}</span>
+          ${a.sesMama ? `<span class="c-mama-inline">${a.sesMama}</span>` : ''}
+        </div>
+        <div class="c-badges">
+          <span class="badge-paquete">Adelanto · ${a.cantFotos} fotos</span>
+        </div>
+      </div>
+      <div style="flex-shrink:0;text-align:right;">
+        <button onclick="event.stopPropagation();adel_abrirModalEditar('${a.sesId}','${a.id}')" title="Editar / eliminar adelanto" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;line-height:1;color:var(--muted);">✏️</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 function adel_toggleNota(adelId) {
   const el = document.getElementById('adel-nota-' + adelId);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
@@ -3280,7 +3308,7 @@ function adel_cancelarConfirm(sesId, adelId) {
 }
 
 function adel_confirmarEnvio(sesId, adelId) {
-  _adelUpdateOnSesion(sesId, adelId, { estado: 'enviado_angie' });
+  _adelUpdateOnSesion(sesId, adelId, { estado: 'enviado_angie', enviadoEn: new Date().toISOString() });
 }
 
 let _adelModalSesPreselect = null;
