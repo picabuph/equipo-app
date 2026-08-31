@@ -945,6 +945,7 @@ window.__renuLoad = function(lista) {
     clientes.splice(0, clientes.length, ...lista);
     try { localStorage.setItem('eq_renu_cache', JSON.stringify(lista)); } catch(e) {}
     _migrarFechasGaleria();
+    _migrarEnviadoAngieLegacy();
     autoSync();
     _syncCalendarDates(); // si el calendario ya cargó, sincronizar fechas reprogramadas
     renderApp();
@@ -962,6 +963,18 @@ function _migrarFechasGaleria() {
   });
   if (hubo) console.log('[migración] fechaEnvioGaleria aplicada');
   localStorage.setItem('mig_fechaGaleria_v1', '1');
+}
+
+// Migra el flag "enviado a Angie" de localStorage (por dispositivo) al cliente (sincronizado)
+function _migrarEnviadoAngieLegacy() {
+  if (localStorage.getItem('mig_enviadoAngie_v1')) return;
+  const legacy = _eq_enviadoAngieLegacy || {};
+  let hubo = false;
+  clientes.forEach(c => {
+    if (legacy[c.id] && !c.jpgsEnviadosAngie) { c.jpgsEnviadosAngie = legacy[c.id]; marcarCambio(c.id); hubo = true; }
+  });
+  if (hubo) console.log('[migración] jpgsEnviadosAngie aplicada');
+  localStorage.setItem('mig_enviadoAngie_v1', '1');
 }
 
 // ─── UTILS ────────────────────────────────────────────────────
@@ -1248,10 +1261,14 @@ function eq_marcarContactado(id, checked) {
   renderApp();
 }
 
-let _eq_enviadoAngie = (() => { try { return JSON.parse(localStorage.getItem('equipo_enviado_angie')||'{}'); } catch(e) { return {}; } })();
+// Migración: este flag vivía solo en localStorage (no sincronizaba entre dispositivos).
+// Ahora se guarda en el propio cliente (c.jpgsEnviadosAngie) y viaja por Firebase.
+let _eq_enviadoAngieLegacy = (() => { try { return JSON.parse(localStorage.getItem('equipo_enviado_angie')||'{}'); } catch(e) { return {}; } })();
 function eq_marcarEnviadoAngie(id, checked) {
-  if (checked) _eq_enviadoAngie[id] = { ts: Date.now() }; else delete _eq_enviadoAngie[id];
-  localStorage.setItem('equipo_enviado_angie', JSON.stringify(_eq_enviadoAngie));
+  const c = clientes.find(x => x.id === id);
+  if (!c) return;
+  if (checked) c.jpgsEnviadosAngie = { ts: Date.now() }; else delete c.jpgsEnviadosAngie;
+  marcarCambio(id);
   renderApp();
 }
 
@@ -1378,7 +1395,7 @@ function renderApp() {
 
   // Recordatorio: pendiente de enviar JPGs a Angie
   const _ESTADOS_ENVIAR_ANGIE = ['edicion_terminada', 'para_subir', 'subidas'];
-  const _pendientesAngie = clientes.filter(c => _ESTADOS_ENVIAR_ANGIE.includes(c.estado) && !_eq_enviadoAngie[c.id]);
+  const _pendientesAngie = clientes.filter(c => _ESTADOS_ENVIAR_ANGIE.includes(c.estado) && !c.jpgsEnviadosAngie);
   if (_pendientesAngie.length) {
     html += `<div class="alerta-15">
       <div class="alerta-15-titulo">📤 Pendiente de enviar JPGs a Angie</div>
