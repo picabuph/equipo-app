@@ -717,8 +717,8 @@ function estaTerminadoFn(c) {
 
 // Auto-sort: grupos por estado, dentro de cada grupo por fecha más próxima
 // Los builtins SIEMPRE usan este orden fijo — no puede ser roto por config/localStorage
-// 0=En edición | 1=Editadas | 2=Galería pendiente | 3=Pendiente cliente | 4=Subidas
-const _ESTADO_PRIO_DEFAULT = { edicion_renu:0, edicion_terminada:1, para_subir:1, galeria_pendiente:2, pendiente_cliente:3, subidas:4 };
+// 0=En edición | 1=Editadas | 2=Galería pendiente | 3=Pendiente cliente | 3.5=Próximas sesiones | 4=Subidas
+const _ESTADO_PRIO_DEFAULT = { edicion_renu:0, edicion_terminada:1, para_subir:1, galeria_pendiente:2, pendiente_cliente:3, proximas:3.5, subidas:4 };
 // Orden cronológico del flujo real — solo para el desplegable de cambio de estado
 const _ESTADO_WORKFLOW_ORDER = { galeria_pendiente:0, pendiente_cliente:1, edicion_renu:2, edicion_terminada:3, para_subir:4, subidas:5 };
 function _getEffectivePrio(c) {
