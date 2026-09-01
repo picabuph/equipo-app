@@ -3236,8 +3236,8 @@ let _adelConfirmSesId = null, _adelConfirmAdelId = null;
 
 function adel_cambiarEstado(sesId, adelId, nuevoEstado) {
   document.querySelectorAll('.estado-pop.open').forEach(p => p.classList.remove('open'));
-  if (nuevoEstado === 'edicion_terminada') {
-    _adelUpdateOnSesion(sesId, adelId, { estado: 'edicion_terminada' });
+  if (nuevoEstado === 'edicion_terminada' || nuevoEstado === 'subidas') {
+    _adelUpdateOnSesion(sesId, adelId, { estado: nuevoEstado });
     _adelConfirmSesId = sesId; _adelConfirmAdelId = adelId;
     document.getElementById('adel-confirm-modal').style.display = 'flex';
   } else {
@@ -3248,7 +3248,7 @@ function adel_cambiarEstado(sesId, adelId, nuevoEstado) {
 function adel_confirmarModalSi() {
   document.getElementById('adel-confirm-modal').style.display = 'none';
   if (_adelConfirmSesId && _adelConfirmAdelId)
-    _adelUpdateOnSesion(_adelConfirmSesId, _adelConfirmAdelId, { estado: 'enviado_angie' });
+    _adelUpdateOnSesion(_adelConfirmSesId, _adelConfirmAdelId, { estado: 'enviado_angie', enviadoEn: new Date().toISOString() });
   _adelConfirmSesId = null; _adelConfirmAdelId = null;
 }
 
@@ -3369,10 +3369,6 @@ function adel_iniciarConfirm(sesId, adelId) {
 
 function adel_cancelarConfirm(sesId, adelId) {
   _adelUpdateOnSesion(sesId, adelId, { estado: 'pendiente' });
-}
-
-function adel_confirmarEnvio(sesId, adelId) {
-  _adelUpdateOnSesion(sesId, adelId, { estado: 'enviado_angie', enviadoEn: new Date().toISOString() });
 }
 
 let _adelModalSesPreselect = null;
